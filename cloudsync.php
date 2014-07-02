@@ -1,6 +1,5 @@
 #!/usr/bin/php
 <?php
-
 define ("CLASS_ROOT", __dir__.'/classes/');
 function __autoload ($className)
 {
@@ -71,10 +70,10 @@ if( !$type || !$name || !is_dir($path) || !is_file($config) ){
 }
 
 Logger::setLevel(2);
-$start = time();
 
 try{
-
+	Helper::checkPHPVersion("5.3.0");
+	
 	require_once $config;
 
 	if(!isset($REMOTE_CLIENT_TOKEN)) $REMOTE_CLIENT_TOKEN=__DIR__.'/.cloudsync.token';
@@ -84,6 +83,7 @@ try{
 	$localConnection = new ConnectionFilesystem( $path );
 	$structure = new Structure($localConnection,$remoteConnection,$PASSPHRASE,$duplicate);
 
+	$start = time();
 	switch( $type ){
 		case "backup":
 			backup( $structure, $CACHE_FILE, $MAX_CACHE_FILE_AGE, $nocache );
@@ -95,14 +95,13 @@ try{
 			clean( $structure, $CACHE_FILE );
 			break;
 	}
+	$end = time();
+	Logger::log( 1, "\nruntime: ".($end-$start)." seconds" );
 }
 catch( Exception $e ){
 
     Logger::log( 1, "ERROR: ".$e->getMessage() );
 }
-
-$end = time();
-Logger::log( 1, "\nruntime: ".($end-$start)." seconds" );
 
 function clean( $structure, $cacheFile ){
 

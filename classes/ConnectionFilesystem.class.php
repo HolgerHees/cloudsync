@@ -10,6 +10,8 @@ class ConnectionFilesystem {
 	public function __construct( $path ){
 
 		$this->localPath = "/".trim($path,"/");
+		
+		Helper::checkCMD("gpg2 --help","gpg2");
 	}
 	
 	public function prepareUpload( $structure, $item, $duplicateFlag ){
