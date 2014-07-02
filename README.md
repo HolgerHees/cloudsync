@@ -19,7 +19,7 @@ The filecompare is done by comparing the archived metadata. It uses a local cach
 
 It is configurable to force a cache file rebuild after <x> days.
 
-php >= 5.3.0 and gpg2 is required
+**php >= 5.3.0 and gpg2 is required**
 
 ```
 Call: ./cloudsync.php [OPTION]
