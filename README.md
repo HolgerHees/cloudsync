@@ -3,7 +3,7 @@ cloudsync
 
 Sync a linux filesystem incrementel and encrypted with google drive
 
-It uses gpg2 to encrypt and decrypt the file, the filenames and all archived metadata with a passphrase.
+It encrypt and decrypt the file, the filenames and all archived metadata with a passphrase.
 
 Archived metadata are:
 - filesize
@@ -18,6 +18,8 @@ Currently only files and folders are supported. Symbolic link support is comming
 The filecompare is done by comparing the archived metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
 It is configurable to force a cache file rebuild after <x> days.
+
+php >= 5.3.0 and gpg2 is required
 
 ```
 Call: ./cloudsync.php [OPTION]
