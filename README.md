@@ -1,7 +1,7 @@
 cloudsync
 =========
 
-Sync a linux filesystem incrementel and encrypted with google drive
+Sync a linux filesystem incremental and encrypted with google drive
 
 It encrypt and decrypt the file, the filenames and all archived metadata with a passphrase.
 
