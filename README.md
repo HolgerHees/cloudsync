@@ -3,6 +3,7 @@ cloudsync
 
 sync a linux filesystem incrementel and encrypted with google drive
 
+<code>
 Call: ./cloudsync.php [OPTION]
 
 Required arguments for long options are also required for short options.
@@ -18,3 +19,4 @@ Required arguments for long options are also required for short options.
                                                         rename - extend the name with an autoincrement number
 
     -h, --help                                     Show this help
+</code>
