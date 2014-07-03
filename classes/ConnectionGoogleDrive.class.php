@@ -44,11 +44,8 @@ class ConnectionGoogleDrive {
 			$authCode = trim(fgets(STDIN));
 
 			$response = $this->client->authenticate("$authCode");
-
 			$clientToken = $this->client->getAccessToken();
-
 			file_put_contents($clientTokenFile, $clientToken );
-			
 			Logger::log(1,"\nclient token stored in '".$this->clientTokenFile."'\n");
 		}
 		else{
@@ -76,9 +73,10 @@ class ConnectionGoogleDrive {
 
 		$driveItem = new Google_Service_Drive_DriveFile();
 		$driveItem->setTitle( $structure->encryptText($item->getName()) );
-		$parent = new Google_Service_Drive_ParentReference();
-		$parent->setId($item->getParent()->getRemoteIdentifier());
-		$driveItem->setParents(array($parent));
+		$parentDriveItem = $this->_getDriveItem($item->getParent());
+		$parentReference = new Google_Service_Drive_ParentReference();
+		$parentReference->setId($parentDriveItem->getId());
+		$driveItem->setParents(array($parentReference));
 		$params = $this->_prepareDriveItem($driveItem,$item,$structure);
 		$_driveItem = $this->service->files->insert($driveItem,$params);
 		if( !$_driveItem ) throw new Exception("Could not create item '".$item->getPath()."'");
@@ -90,46 +88,31 @@ class ConnectionGoogleDrive {
 
 		if( !$this->service ) $this->_init( $structure->getRootItem() );
 
-		$driveItem = $this->_getDriveItem( $item->getRemoteIdentifier() );
-		if( $driveItem ) {
-
-			$params = $this->_prepareDriveItem($driveItem,$item,$structure);
-			$_driveItem = $this->service->files->update($driveItem->getId(), $driveItem, $params);
-			if( !$_driveItem ) throw new Exception("Could not update item '".$item->getPath()."'");
-			$this->cacheFiles[$_driveItem->getId()] = $_driveItem;
-		}
-		else{
-
-			throw new Exception("Could not update item '".$item->getPath()."'");
-		}
+		$driveItem = $this->_getDriveItem( $item );
+		$params = $this->_prepareDriveItem($driveItem,$item,$structure);
+		$_driveItem = $this->service->files->update($driveItem->getId(), $driveItem, $params);
+		if( !$_driveItem ) throw new Exception("Could not update item '".$item->getPath()."'");
+		$this->cacheFiles[$_driveItem->getId()] = $_driveItem;
 	}
 
 	public function remove( $structure, $item ){
 
 		if( !$this->service ) $this->_init( $structure->getRootItem() );
 
-		$driveItem = $this->_getDriveItem( $item->getRemoteIdentifier() );
-		if( $driveItem ) {
-			
-			$result = $this->service->files->trash($driveItem->getId());
-			unset( $this->cacheFiles[$driveItem->getId()] );
-		}
-		else{
-
-			throw new Exception("Could not remove item '".$item->getPath()."'");
-		}
+		$driveItem = $this->_getDriveItem( $item );
+		$result = $this->service->files->delete($driveItem->getId());
+		unset( $this->cacheFiles[$driveItem->getId()] );
 	}
 	
 	public function get( $item ){
 	
-		$driveItem = $this->_getDriveItem( $item->getRemoteIdentifier() );
+		$driveItem = $this->_getDriveItem( $item );
 		if( $downloadUrl = $driveItem->getDownloadUrl() ){
 
 			$request = new Google_Http_Request($downloadUrl, 'GET', null, null);
 			$httpRequest = $this->client->getAuth()->sign($request);
 			$httpResponse = $this->client->getIo()->makeRequest($httpRequest);
 			if ($httpResponse->getResponseHttpCode() == 200) {
-
 				return $httpResponse->getResponseBody();
 			}
 		}
@@ -137,7 +120,7 @@ class ConnectionGoogleDrive {
 		throw new Exception("Could not get item '".$item->getPath()."'");
 	}
 
-	public function readFolder( $structure, $parentItem ){
+	public function readFolder( $structure, $parentItem, $keeplinks ){
 	
 		if( !$this->service ) $this->_init( $structure->getRootItem() );
 
@@ -172,22 +155,15 @@ class ConnectionGoogleDrive {
 			)
 		));
 		
+		$driveItem->setMimetype( $item->isType( Item::FOLDER ) ? self::FOLDER : 'application/octet-stream' );
+
 		$params = array();
-		if( $item->isType( Item::FOLDER ) ){
-		
-			$driveItem->setMimeType(self::FOLDER);
-		}
-		else{
-		
-			$driveItem->setMimetype( 'application/octet-stream' );
-			
-			if( $item->isType( Item::FILE ) ){
-				$params = array(
-					'data' => $structure->readLocalEncryptedFile($item),
-					'mimeType' => 'application/octet-stream',
-					'uploadType' => 'media'
-				);
-			}
+		if( ( $data = $structure->getLocalEncryptedBinary($item) ) !== false ){
+			$params = array(
+				'data' => $data,
+				'mimeType' => 'application/octet-stream',
+				'uploadType' => 'media'
+			);
 		}
 		return $params;
 	}
@@ -207,18 +183,26 @@ class ConnectionGoogleDrive {
 		return Item::fromMetadata($structure->decryptText($driveItem->getTitle()), $driveItem->getId(), $metadata);
 	}
 
-	private function _getDriveItem( $id ){
+	private function _getDriveItem( $item ){
+
+		$id = $item->getRemoteIdentifier();
 
 		if( isset($this->cacheFiles[$id]) ){
 
 			return $this->cacheFiles[$id];
 		}
 		
-		$driveItem = $this->service->files->get($id);
-		if( !$driveItem ){
-		
-			throw new Exception("Does't find item '".$id."'");
+		try{
+			$driveItem = $this->service->files->get($id);
 		}
+		catch( Exception $e ){
+			throw new Exception("couldn't find remote item '".$item->getPath()."' [".$id."]\ntry to run with --nocache");
+		}
+		
+		if( $driveItem->getLabels()->getTrashed() ){
+			throw new Exception("remote item '".$item->getPath()."' [".$id."] is trashed\ntry to run with --nocache");
+		}
+
 		$this->cacheFiles[$id] = $driveItem;
 		return $driveItem;
 	}
@@ -246,11 +230,9 @@ class ConnectionGoogleDrive {
 				if( !$parentItem ) throw new Exception("Could not create folder '".$name."'"); 
 			}
 			else if( count($result) == 1 ){
-			
 				$parentItem = current($result);
 			}
 			else{
-
 				throw new Exception("base path '".$this->basePath."' not unique"); 
 			}
 			$this->cacheFiles[$parentItem->getId()] = $parentItem;
