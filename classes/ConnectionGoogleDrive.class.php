@@ -73,24 +73,24 @@ class ConnectionGoogleDrive {
 
 		$driveItem = new Google_Service_Drive_DriveFile();
 		$driveItem->setTitle( $structure->encryptText($item->getName()) );
-		$parentDriveItem = $this->_getDriveItem($item->getParent());
+		$parentDriveItem = $this->_getDriveItem( $item->getParent() );
 		$parentReference = new Google_Service_Drive_ParentReference();
-		$parentReference->setId($parentDriveItem->getId());
-		$driveItem->setParents(array($parentReference));
-		$params = $this->_prepareDriveItem($driveItem,$item,$structure);
+		$parentReference->setId( $parentDriveItem->getId() );
+		$driveItem->setParents(array( $parentReference) );
+		$params = $this->_prepareDriveItem( $driveItem, $item, $structure, true );
 		$_driveItem = $this->service->files->insert($driveItem,$params);
 		if( !$_driveItem ) throw new Exception("Could not create item '".$item->getPath()."'");
 		$this->cacheFiles[$_driveItem->getId()] = $_driveItem;
-		$item->setRemoteIdentifier($_driveItem->getId());
+		$item->setRemoteIdentifier( $_driveItem->getId() );
 	}
 
-	public function update( $structure, $item ){
+	public function update( $structure, $item, $with_filedata ){
 
 		if( !$this->service ) $this->_init( $structure->getRootItem() );
 
 		$driveItem = $this->_getDriveItem( $item );
-		$params = $this->_prepareDriveItem($driveItem,$item,$structure);
-		$_driveItem = $this->service->files->update($driveItem->getId(), $driveItem, $params);
+		$params = $this->_prepareDriveItem( $driveItem, $item, $structure, $with_filedata );
+		$_driveItem = $this->service->files->update( $driveItem->getId(), $driveItem, $params );
 		if( !$_driveItem ) throw new Exception("Could not update item '".$item->getPath()."'");
 		$this->cacheFiles[$_driveItem->getId()] = $_driveItem;
 	}
@@ -142,7 +142,7 @@ class ConnectionGoogleDrive {
 		return $child_items;
 	}
 
-	private function _prepareDriveItem( $driveItem, $item, $structure ){
+	private function _prepareDriveItem( $driveItem, $item, $structure, $with_filedata ){
 
 		//echo $item->getModifyTime()."\n\n";
 		//echo date("Y-m-d\TH:i:s.000\Z", $item->getModifyTime() )."\n\n";
@@ -158,7 +158,7 @@ class ConnectionGoogleDrive {
 		$driveItem->setMimetype( $item->isType( Item::FOLDER ) ? self::FOLDER : 'application/octet-stream' );
 
 		$params = array();
-		if( ( $data = $structure->getLocalEncryptedBinary($item) ) !== false ){
+		if( $with_filedata && ( $data = $structure->getLocalEncryptedBinary($item) ) !== false ){
 			$params = array(
 				'data' => $data,
 				'mimeType' => 'application/octet-stream',

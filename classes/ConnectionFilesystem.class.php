@@ -113,7 +113,7 @@ class ConnectionFilesystem {
 		}
 	}
 
-	public function update( $structure, $item ){
+	public function update( $structure, $item, $with_filedata ){
 	    // TODO
 	    throw new Exception("not implemented");
 	}

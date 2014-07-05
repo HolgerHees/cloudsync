@@ -102,6 +102,13 @@ class Item {
 		return false;
 	}
 
+	public function isFiledataChanged( $item ){
+		if( $this->filesize != $item->filesize ) return true;
+		if( $this->modifytime != $item->modifytime ) return true;
+		if( $this->creationtime != $item->creationtime ) return true;
+		return false;
+	}
+
 	public function isMetadataChanged( $item ){
 		if( $this->filesize != $item->filesize ) return true;
 		if( $this->modifytime != $item->modifytime ) return true;

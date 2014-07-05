@@ -188,7 +188,6 @@ class Structure {
 				//echo $item->getFileSize() ." ". $this->structure[$key]->getFileSize()."\n";
 				//echo $item->getModifyTime() ." ". $this->structure[$key]->getModifyTime()."\n";
 
-				// check filesize
 				if( $localChildItem->isTypeChanged( $remoteChildItem ) ){
 					Logger::log( 2, "remove ".$remoteChildItem->getTypeName()." '".$remoteChildItem->getPath()."'" );
 					if( !$dryRun ) $this->remoteConnection->remove( $this, $remoteChildItem );
@@ -202,9 +201,10 @@ class Structure {
 				}
 				// check filesize and modify time
 				else if( $localChildItem->isMetadataChanged( $remoteChildItem ) ){
+					$isFiledataChanged = $localChildItem->isFiledataChanged( $remoteChildItem );
 					$remoteChildItem->update( $localChildItem );
 					Logger::log( 2, "update ".$remoteChildItem->getTypeName()." '".$remoteChildItem->getPath()."'" );
-					if( !$dryRun ) $this->remoteConnection->update( $this, $remoteChildItem );
+					if( !$dryRun ) $this->remoteConnection->update( $this, $remoteChildItem, $isFiledataChanged );
 					$status_r['update']++;
 				}
 				else{
