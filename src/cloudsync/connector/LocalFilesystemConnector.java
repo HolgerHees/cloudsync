@@ -178,6 +178,12 @@ public class LocalFilesystemConnector {
 			}
 		}
 
+		try {
+			Files.setLastModifiedTime(path, item.getModifyTime());
+		} catch (final IOException e) {
+			throw new CloudsyncException("Can't set modify time of " + item.getTypeName() + " '" + item.getPath() + "'", e);
+		}
+
 		if (!nopermissions) {
 
 			final Integer permissions = item.getPermissions();
@@ -187,7 +193,7 @@ public class LocalFilesystemConnector {
 
 					Files.setPosixFilePermissions(path, toPermissions(permissions));
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set permissions on " + item.getTypeName() + " '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 				}
 			}
 
@@ -204,7 +210,7 @@ public class LocalFilesystemConnector {
 					}
 					throw new CloudsyncException("Group '" + item.getGroup() + "' on '" + item.getPath() + "' not found");
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set group '" + item.getGroup() + "' on '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set group '" + item.getGroup() + "' of '" + item.getPath() + "'", e);
 				}
 			}
 
@@ -220,7 +226,7 @@ public class LocalFilesystemConnector {
 					}
 					throw new CloudsyncException("User '" + item.getUser() + "' on '" + item.getPath() + "' not found");
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set user '" + item.getUser() + "' on '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set user '" + item.getUser() + "' of '" + item.getPath() + "'", e);
 				}
 			}
 		}
