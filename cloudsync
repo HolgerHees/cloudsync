@@ -1,0 +1,7 @@
+#!/bin/bash
+
+CONFIG="--config ./config/cloudsync.config"
+JAVA="java"
+
+CMD="$JAVA -cp "./bin/:./lib/*:./lib/drive/*:./lib/drive/libs/*" cloudsync.Cloudsync $CONFIG $*"
+eval $CMD

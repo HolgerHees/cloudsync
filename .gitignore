@@ -1,1 +1,7 @@
+.settings*
+.classpath
 .cloudsync*
+.project
+bin*
+eclipse*
+config/cloudsync.config
