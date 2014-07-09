@@ -3,7 +3,7 @@ cloudsync
 
 Sync a linux filesystem incremental and encrypted with google drive
 
-It encrypt and decrypt the file, the filenames and all archived metadata with a passphrase.
+It encrypt and decrypt the file, the filenames and all archived metadata with AES 256 and a passphrase.
 
 Archived metadata are:
 - filesize
