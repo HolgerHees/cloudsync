@@ -161,24 +161,23 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		}
 
 		try {
-			final File driveItem = new File();
-			driveItem.setTitle(structure.encryptText(item.getName()));
 			final File parentDriveItem = _getDriveItem(item.getParent());
 			final ParentReference parentReference = new ParentReference();
 			parentReference.setId(parentDriveItem.getId());
+			File driveItem = new File();
+			driveItem.setTitle(structure.encryptText(item.getName()));
 			driveItem.setParents(Arrays.asList(parentReference));
 			final InputStreamContent params = _prepareDriveItem(driveItem, item, structure, true);
-			File _driveItem = null;
 			if (params == null) {
-				_driveItem = service.files().insert(driveItem).execute();
+				driveItem = service.files().insert(driveItem).execute();
 			} else {
-				_driveItem = service.files().insert(driveItem, params).execute();
+				driveItem = service.files().insert(driveItem, params).execute();
 			}
-			if (_driveItem == null) {
+			if (driveItem == null) {
 				throw new CloudsyncException("Could not create item '" + item.getPath() + "'");
 			}
-			_addToCache(_driveItem, null);
-			item.setRemoteIdentifier(_driveItem.getId());
+			_addToCache(driveItem, null);
+			item.setRemoteIdentifier(driveItem.getId());
 		} catch (final CryptException e) {
 
 			throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " title of '" + item.getPath() + "'", e);
@@ -196,9 +195,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		}
 
 		try {
-			final File driveItem = new File();
-			final InputStreamContent params = _prepareDriveItem(driveItem, item, structure, with_filedata);
-
 			if (item.isType(ItemType.FILE)) {
 
 				final File _parentDriveItem = _getHistoryFolder(item);
@@ -217,20 +213,19 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					}
 				}
 			}
-
-			File _driveItem = null;
+			File driveItem = new File();
+			final InputStreamContent params = _prepareDriveItem(driveItem, item, structure, with_filedata);
 			if (params == null) {
-				_driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
+				driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
 			} else {
-				_driveItem = service.files().update(item.getRemoteIdentifier(), driveItem, params).execute();
+				driveItem = service.files().update(item.getRemoteIdentifier(), driveItem, params).execute();
 			}
-			if (_driveItem == null) {
+			if (driveItem == null) {
 				throw new CloudsyncException("Could not update item '" + item.getPath() + "'");
-			} else if (_driveItem.getLabels().getTrashed()) {
-				throw new CloudsyncException("Remote item '" + item.getPath() + "' [" + _driveItem.getId() + "] is trashed\ntry to run with --nocache");
+			} else if (driveItem.getLabels().getTrashed()) {
+				throw new CloudsyncException("Remote item '" + item.getPath() + "' [" + driveItem.getId() + "] is trashed\ntry to run with --nocache");
 			}
-
-			_addToCache(_driveItem, null);
+			_addToCache(driveItem, null);
 		} catch (final IOException e) {
 
 			throw new CloudsyncException("Unexpected error during remote update of " + item.getTypeName() + " '" + item.getPath() + "'", e);
@@ -248,13 +243,12 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			final File _parentDriveItem = _getHistoryFolder(item);
 			if (_parentDriveItem != null) {
 
-				final File driveItem = new File();
-				final ParentReference _parentReference = new ParentReference();
-				_parentReference.setId(_parentDriveItem.getId());
-				driveItem.setParents(Arrays.asList(_parentReference));
-
-				final File _driveItem = service.files().patch(item.getRemoteIdentifier(), driveItem).execute();
-				if (_driveItem == null) {
+				final ParentReference parentReference = new ParentReference();
+				parentReference.setId(_parentDriveItem.getId());
+				File driveItem = new File();
+				driveItem.setParents(Arrays.asList(parentReference));
+				driveItem = service.files().patch(item.getRemoteIdentifier(), driveItem).execute();
+				if (driveItem == null) {
 					throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
 				}
 			} else {
@@ -279,7 +273,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			final File driveItem = _getDriveItem(item);
 			final String downloadUrl = driveItem.getDownloadUrl();
 			final HttpResponse resp = service.getRequestFactory().buildGetRequest(new GenericUrl(downloadUrl)).execute();
-
 			return resp.getContent();
 		} catch (final IOException e) {
 
@@ -552,8 +545,10 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	private void _addToCache(final File driveItem, final File parentDriveItem) {
-
-		cacheFiles.put(driveItem.getId(), driveItem);
+				
+		if( driveItem.getMimeType().equals(FOLDER)){
+			cacheFiles.put(driveItem.getId(), driveItem);
+		}
 		if (parentDriveItem != null) {
 			cacheParents.put(parentDriveItem.getId() + ':' + driveItem.getTitle(), driveItem);
 		}

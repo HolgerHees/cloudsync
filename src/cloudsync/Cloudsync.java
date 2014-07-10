@@ -7,7 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
@@ -40,9 +43,12 @@ public class Cloudsync {
 
 	private final Options options;
 	private final CommandLine cmd;
+	private List<Option> positions;
 
 	public Cloudsync(final String[] args) throws ParseException {
 
+		positions = new ArrayList<Option>();
+		
 		options = new Options();
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
@@ -50,6 +56,7 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("backup");
 		Option option = OptionBuilder.create("b");
 		options.addOption(option);
+		positions.add(option);
 
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
@@ -57,6 +64,7 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("restore");
 		option = OptionBuilder.create("r");
 		options.addOption(option);
+		positions.add(option);
 
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
@@ -64,20 +72,37 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("clean");
 		option = OptionBuilder.create("c");
 		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("List the contents of an backup");
+		OptionBuilder.withLongOpt("list");
+		option = OptionBuilder.create("l");
+		options.addOption(option);
+		positions.add(option);
 
 		OptionBuilder.withArgName("name");
 		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Backup name");
+		OptionBuilder.withDescription("Backup name of --backup, --restore, --clean or --list");
 		OptionBuilder.withLongOpt("name");
 		option = OptionBuilder.create("n");
 		options.addOption(option);
+		positions.add(option);
 
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Config file path. Default is /etc/cloudsync, ~/.cloudsync.config");
+		OptionBuilder.withDescription("Config file path. Default is './config/cloudsync.config'");
 		OptionBuilder.withLongOpt("config");
 		option = OptionBuilder.create();
 		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("pattern");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Limit contents paths of --restore or --list to regex based ^<pattern>$");
+		OptionBuilder.withLongOpt("limit");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
 
 		String description = "How to handle symbolic links\n";
 		description += "<extern> - convert external links where the target is not part of the current backup structure - (default)\n";
@@ -89,6 +114,7 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("followlinks");
 		option = OptionBuilder.create();
 		options.addOption(option);
+		positions.add(option);
 
 		description = "Behavior on existing files\n";
 		description += "<stop> - stop immediately - (default)\n";
@@ -100,6 +126,7 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("duplicate");
 		option = OptionBuilder.create();
 		options.addOption(option);
+		positions.add(option);
 
 		description = "Before remove or update a file or folder move it to a history folder.\n";
 		description += "Use a maximum of <count> history folders";
@@ -109,11 +136,24 @@ public class Cloudsync {
 		OptionBuilder.withLongOpt("history");
 		option = OptionBuilder.create();
 		options.addOption(option);
+		positions.add(option);
 
-		options.addOption(null, "nopermissions", false, "Don't restore permission, group and owner attributes");
-		options.addOption(null, "nocache", false, "Don't use 'cloudsync*.cache' file (much slower)");
+		OptionBuilder.withDescription("Don't restore permission, group and owner attributes");
+		OptionBuilder.withLongOpt("nopermissions");
+		options.addOption(option);
+		positions.add(option);
 
-		options.addOption("h", "help", false, "Show this help");
+		OptionBuilder.withDescription("Don't use 'cloudsync*.cache' file for --backup or --list (much slower)");
+		OptionBuilder.withLongOpt("nocache");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Show this help");
+		OptionBuilder.withLongOpt("help");
+		option = OptionBuilder.create("h");
+		options.addOption(option);
+		positions.add(option);
 
 		final CommandLineParser parser = new GnuParser();
 		cmd = parser.parse(options, args);
@@ -137,6 +177,8 @@ public class Cloudsync {
 			type = "restore";
 		} else if ((path = cmd.getOptionValue("clean")) != null) {
 			type = "clean";
+		} else if (cmd.hasOption("list")) {
+			type = "list";
 		}
 
 		final String name = cmd.getOptionValue("name");
@@ -144,7 +186,7 @@ public class Cloudsync {
 		final LinkType followlinks = LinkType.fromName(cmd.getOptionValue("followlinks", LinkType.EXTERNAL.getName()));
 		final DuplicateType duplicate = DuplicateType.fromName(cmd.getOptionValue("duplicate", DuplicateType.STOP.getName()));
 
-		String config = cmd.getOptionValue("config");
+		String config = cmd.getOptionValue("config","."+Item.SEPARATOR+"config"+Item.SEPARATOR+"cloudsync.config");
 		if (config.startsWith("." + Item.SEPARATOR)) {
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
@@ -153,8 +195,9 @@ public class Cloudsync {
 
 		final boolean nopermissions = cmd.hasOption("nopermissions");
 		final boolean nocache = cmd.hasOption("nocache");
+		final String limitPattern = cmd.getOptionValue("limit");
 
-		final boolean baseValid = path != null && new File(path).isDirectory();
+		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
 		boolean configValid = config != null && new File(config).isFile();
 
 		final Properties prop = new Properties();
@@ -165,31 +208,45 @@ public class Cloudsync {
 		}
 
 		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid) {
-
-			System.out.println("");
-			System.out.println("error: missing or wrong options");
-			if (type == null) {
-				System.out.println(" You must specifiy --backup, --restore or --clean <path>");
-			} else if (!baseValid) {
-				System.out.println(" --" + type + " <path> not valid");
+			
+			if( cmd.getOptions().length > 0 ){
+				
+				System.out.println("");
+				System.out.println("error: missing or wrong options");
+				if (type == null) {
+					System.out.println(" You must specifiy --backup, --restore, --list or --clean");
+				} else if (!baseValid) {
+					System.out.println(" --" + type + " <path> not valid");
+				}
+				if (name == null) {
+					System.out.println(" Missing --name <name>");
+				}
+				if (followlinks == null) {
+					System.out.println(" Wrong --followlinks behavior set");
+				}
+				if (duplicate == null) {
+					System.out.println(" Wrong --duplicate behavior set");
+				}
+				if (config == null) {
+					System.out.println(" Missing --config <path>");
+				} else if (!configValid) {
+					System.out.println(" --config <path> not valid");
+				}
+				System.out.println("");
 			}
-			if (name == null) {
-				System.out.println(" Missing --name <name>");
-			}
-			if (followlinks == null) {
-				System.out.println(" Wrong --followlinks behavior set");
-			}
-			if (duplicate == null) {
-				System.out.println(" Wrong --duplicate behavior set");
-			}
-			if (config == null) {
-				System.out.println(" Missing --config <path>");
-			} else if (!configValid) {
-				System.out.println(" --config <path> not valid");
-			}
-			System.out.println("");
-
+			
 			final HelpFormatter formatter = new HelpFormatter();
+			formatter.setWidth(120);
+			formatter.setOptionComparator(new Comparator<Option>() {
+
+				@Override
+				public int compare(Option o1, Option o2) {
+					if( positions.indexOf(o1)<positions.indexOf(o2) ) return -1;
+					if( positions.indexOf(o1)>positions.indexOf(o2) ) return 1;
+					return 0;
+				}
+			});
+			//formatter.setOptPrefix("");
 			formatter.printHelp("cloudsync <options>", options);
 			return;
 		}
@@ -231,7 +288,9 @@ public class Cloudsync {
 			if (type.equals("backup")) {
 				Cloudsync.backup(structure, cacheFilePath, Integer.parseInt(prop.getProperty("MAX_CACHE_FILE_AGE")), nocache);
 			} else if (type.equals("restore")) {
-				Cloudsync.restore(structure, cacheFilePath);
+				Cloudsync.restore(structure, cacheFilePath, limitPattern);
+			} else if (type.equals("list")) {
+				Cloudsync.list(structure, cacheFilePath, limitPattern, nocache);
 			} else if (type.equals("clean")) {
 				Cloudsync.clean(structure, cacheFilePath);
 			}
@@ -258,13 +317,30 @@ public class Cloudsync {
 		structure.saveChangedStructureToFile(cacheFilePath);
 	}
 
-	private static void restore(final Structure structure, final Path cacheFilePath) throws CloudsyncException {
+	private static void restore(final Structure structure, final Path cacheFilePath, String limitPattern) throws CloudsyncException {
 
 		LOGGER.log(Level.INFO, "load structure from server");
 		structure.buildStructureFromRemoteConnection();
 
 		LOGGER.log(Level.INFO, "start restore");
-		structure.restore(true);
+		structure.restore(true, limitPattern);
+		structure.saveChangedStructureToFile(cacheFilePath);
+	}
+
+	private static void list(final Structure structure, final Path cacheFilePath, String limitPattern, final Boolean nocache) throws CloudsyncException {
+
+		if (Files.exists(cacheFilePath) && !nocache.booleanValue()) {
+
+			LOGGER.log(Level.INFO, "load structure from cache");
+			structure.buildStructureFromFile(cacheFilePath);
+		} else {
+
+			LOGGER.log(Level.INFO, "load structure from server");
+			structure.buildStructureFromRemoteConnection();
+		}
+
+		LOGGER.log(Level.INFO, "");
+		structure.list(limitPattern);
 		structure.saveChangedStructureToFile(cacheFilePath);
 	}
 

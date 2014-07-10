@@ -1,7 +1,12 @@
 #!/bin/bash
 
-CONFIG="--config ./config/cloudsync.config"
 JAVA="java"
 
-CMD="$JAVA -cp "./bin/:./lib/*:./lib/drive/*:./lib/drive/libs/*" cloudsync.Cloudsync $CONFIG $*"
-eval $CMD
+VERSION=$("$JAVA" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+
+if [[ "$VERSION" < 1.7 ]]; then
+    echo Found unsupported java version. Please install jdk 7 or newer
+else
+    CMD="$JAVA -cp "./bin/:./lib/*:./lib/drive/*:./lib/drive/libs/*" cloudsync.Cloudsync $*"
+    eval $CMD
+fi

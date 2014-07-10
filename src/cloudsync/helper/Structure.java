@@ -57,13 +57,13 @@ public class Structure {
 		private int skip = 0;
 	}
 
-	public Structure(final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicate, final LinkType followlinks,
+	public Structure(final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag, final LinkType followlinks,
 			final boolean nopermissions, final int history) {
 
 		this.localConnection = localConnection;
 		this.remoteConnection = remoteConnection;
 		this.crypt = crypt;
-		duplicateFlag = duplicate;
+		this.duplicateFlag = duplicateFlag;
 		this.followlinks = followlinks;
 		this.nopermissions = nopermissions;
 		this.history = history;
@@ -147,22 +147,44 @@ public class Structure {
 		}
 	}
 
-	public void restore(final boolean perform) throws CloudsyncException {
-		_restoreRemoteStructure(root, perform);
+	public void list(String limitPattern) throws CloudsyncException {
+		_listRemoteStructure(root,limitPattern);
 	}
 
-	private void _restoreRemoteStructure(final Item item, final boolean perform) throws CloudsyncException {
+	private void _listRemoteStructure(final Item item, String limitPattern) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 
+			String path = child.getPath();
+			if( limitPattern != null && !path.matches("^"+limitPattern+"$")) continue;
+
+			LOGGER.log(Level.INFO, path);
+
+			if (child.isType(ItemType.FOLDER)) {
+				_listRemoteStructure(child, limitPattern);
+			}
+		}
+	}
+
+	public void restore(final boolean perform, String limitPattern) throws CloudsyncException {
+		_restoreRemoteStructure(root, perform, limitPattern);
+	}
+
+	private void _restoreRemoteStructure(final Item item, final boolean perform, String limitPattern) throws CloudsyncException {
+
+		for (final Item child : item.getChildren().values()) {
+			
+			String path = child.getPath();
+			if( limitPattern != null && !path.matches("^"+limitPattern+"$")) continue;
+
 			localConnection.prepareUpload(this, child, duplicateFlag);
-			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + child.getPath() + "'");
+			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
 			if (perform) {
 				localConnection.upload(this, child, duplicateFlag, nopermissions);
 			}
 
 			if (child.isType(ItemType.FOLDER)) {
-				_restoreRemoteStructure(child, perform);
+				_restoreRemoteStructure(child, perform,limitPattern);
 			}
 		}
 	}
