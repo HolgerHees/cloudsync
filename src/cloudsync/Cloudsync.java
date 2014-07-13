@@ -3,9 +3,6 @@ package cloudsync;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,15 +21,16 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteGoogleDriveConnector;
 import cloudsync.helper.CloudsyncException;
 import cloudsync.helper.Crypt;
+import cloudsync.helper.Helper;
 import cloudsync.helper.LogfileFormatter;
 import cloudsync.helper.Structure;
+import cloudsync.helper.UsageException;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.LinkType;
@@ -42,10 +40,12 @@ public class Cloudsync {
 	private final static Logger LOGGER = Logger.getLogger(Cloudsync.class.getName());
 
 	private final Options options;
-	private final CommandLine cmd;
-	private List<Option> positions;
+	private final List<Option> positions;
+	private final String[] args;
 
-	public Cloudsync(final String[] args) throws ParseException {
+	public Cloudsync(final String[] args) {
+		
+		this.args = args;
 
 		positions = new ArrayList<Option>();
 		
@@ -105,9 +105,9 @@ public class Cloudsync {
 		positions.add(option);
 
 		String description = "How to handle symbolic links\n";
-		description += "<extern> - convert external links where the target is not part of the current backup structure - (default)\n";
-		description += "<all> - convert all symbolic links\n";
-		description += "<none> - convert no symbolic links to real files or folders";
+		description += "<extern> - follow symbolic links if the target is outside from the current directory hierarchy - (default)\n";
+		description += "<all> - follow all symbolic links\n";
+		description += "<none> - don't follow any symbolic links";
 		OptionBuilder.withArgName("extern|all|none");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
@@ -140,6 +140,7 @@ public class Cloudsync {
 
 		OptionBuilder.withDescription("Don't restore permission, group and owner attributes");
 		OptionBuilder.withLongOpt("nopermissions");
+		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
 
@@ -149,17 +150,20 @@ public class Cloudsync {
 		options.addOption(option);
 		positions.add(option);
 
+		OptionBuilder.withDescription("Ignore a existing pid file. Should only be used after a previous crashed job.");
+		OptionBuilder.withLongOpt("forcestart");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
 		OptionBuilder.withDescription("Show this help");
 		OptionBuilder.withLongOpt("help");
 		option = OptionBuilder.create("h");
 		options.addOption(option);
 		positions.add(option);
-
-		final CommandLineParser parser = new GnuParser();
-		cmd = parser.parse(options, args);
 	}
 
-	private void start() {
+	private void start() throws CloudsyncException, UsageException {
 
 		final Logger logger = Logger.getLogger("cloudsync");
 		logger.setLevel(Level.ALL);
@@ -168,6 +172,16 @@ public class Cloudsync {
 		handler.setLevel(Level.ALL);
 		logger.addHandler(handler);
 		logger.setUseParentHandlers(false);
+
+		final CommandLineParser parser = new GnuParser();
+		CommandLine cmd;
+		try{
+			cmd = parser.parse(options, args);
+		}
+		catch( ParseException e ){
+			
+			throw new UsageException(e.getMessage());
+		}
 
 		String type = null;
 		String path = null;
@@ -195,6 +209,7 @@ public class Cloudsync {
 
 		final boolean nopermissions = cmd.hasOption("nopermissions");
 		final boolean nocache = cmd.hasOption("nocache");
+		final boolean forcestart = cmd.hasOption("forcestart");
 		final String limitPattern = cmd.getOptionValue("limit");
 
 		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
@@ -209,173 +224,107 @@ public class Cloudsync {
 
 		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid) {
 			
+			List<String> messages = new ArrayList<String>();
 			if( cmd.getOptions().length > 0 ){
 				
-				System.out.println("");
-				System.out.println("error: missing or wrong options");
+				messages.add("error: missing or wrong options");
 				if (type == null) {
-					System.out.println(" You must specifiy --backup, --restore, --list or --clean");
+					messages.add(" You must specifiy --backup, --restore, --list or --clean");
 				} else if (!baseValid) {
-					System.out.println(" --" + type + " <path> not valid");
+					messages.add(" --" + type + " <path> not valid");
 				}
 				if (name == null) {
-					System.out.println(" Missing --name <name>");
+					messages.add(" Missing --name <name>");
 				}
 				if (followlinks == null) {
-					System.out.println(" Wrong --followlinks behavior set");
+					messages.add(" Wrong --followlinks behavior set");
 				}
 				if (duplicate == null) {
-					System.out.println(" Wrong --duplicate behavior set");
+					messages.add(" Wrong --duplicate behavior set");
 				}
 				if (config == null) {
-					System.out.println(" Missing --config <path>");
+					messages.add(" Missing --config <path>");
 				} else if (!configValid) {
-					System.out.println(" --config <path> not valid");
+					messages.add(" --config <path> not valid");
 				}
-				System.out.println("");
 			}
-			
-			final HelpFormatter formatter = new HelpFormatter();
-			formatter.setWidth(120);
-			formatter.setOptionComparator(new Comparator<Option>() {
-
-				@Override
-				public int compare(Option o1, Option o2) {
-					if( positions.indexOf(o1)<positions.indexOf(o2) ) return -1;
-					if( positions.indexOf(o1)>positions.indexOf(o2) ) return 1;
-					return 0;
-				}
-			});
-			//formatter.setOptPrefix("");
-			formatter.printHelp("cloudsync <options>", options);
-			return;
+			throw new UsageException(StringUtils.join(messages,'\n'));
 		}
 
+		final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "REMOTE_DIR", "PASSPHRASE", "CACHE_FILE", "LOCK_FILE", "PID_FILE" };
+		for (final String propertyName : propertyNames) {
+			if (StringUtils.isEmpty(prop.getProperty(propertyName))) {
+				throw new CloudsyncException("'" + propertyName + "' is not configured");
+			}
+		}
+
+		final Crypt crypt = new Crypt(prop.getProperty("PASSPHRASE"));
+
+		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(path);
+		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.d_H.m.s");
+		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(prop.getProperty("REMOTE_CLIENT_ID"), prop.getProperty("REMOTE_CLIENT_SECRET"), Helper.getPathProperty(prop,"REMOTE_CLIENT_TOKEN_PATH"),
+				prop.getProperty("REMOTE_DIR"), name, history > 0 ? name + " " + sdf.format(new Date()) : null);
+
+		Structure structure = null;
 		try {
 
-			// /home/hhees/Tools/jdk1.7.0_55/bin/java -cp
-			// "./bin/:./lib/*:./lib/drive/*:./lib/drive/libs/*"
-			// cloudsync.Cloudsync --help
-
-			final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "REMOTE_DIR", "PASSPHRASE", "MAX_CACHE_FILE_AGE", "CACHE_FILE" };
-			for (final String propertyName : propertyNames) {
-				if (StringUtils.isEmpty(prop.getProperty(propertyName))) {
-					throw new CloudsyncException("'" + propertyName + "' is not configured");
-				}
-			}
-
-			String _cacheFilePath = prop.getProperty("CACHE_FILE");
-			if (_cacheFilePath.startsWith("." + Item.SEPARATOR)) {
-				_cacheFilePath = System.getProperty("user.dir") + Item.SEPARATOR + _cacheFilePath;
-			}
-			_cacheFilePath = _cacheFilePath.replace("{name}", name);
-			final Path cacheFilePath = Paths.get(_cacheFilePath);
-			final Crypt crypt = new Crypt(prop.getProperty("PASSPHRASE"));
-
-			String tokenFilePath = prop.getProperty("REMOTE_CLIENT_TOKEN_PATH");
-			if (tokenFilePath.startsWith("." + Item.SEPARATOR)) {
-				tokenFilePath = System.getProperty("user.dir") + Item.SEPARATOR + tokenFilePath;
-			}
-
-			final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(path);
-			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.d_H.m.s");
-			final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(prop.getProperty("REMOTE_CLIENT_ID"), prop.getProperty("REMOTE_CLIENT_SECRET"), tokenFilePath,
-					prop.getProperty("REMOTE_DIR"), name, history > 0 ? name + " " + sdf.format(new Date()) : null);
-			final Structure structure = new Structure(localConnection, remoteConnection, crypt, duplicate, followlinks, nopermissions, history);
+			structure = new Structure(name, localConnection, remoteConnection, crypt, duplicate, followlinks, nopermissions, history);
+			structure.init(Helper.getPathProperty(prop,"CACHE_FILE"),Helper.getPathProperty(prop,"LOCK_FILE"),Helper.getPathProperty(prop,"PID_FILE"),nocache,forcestart);
 
 			final long start = System.currentTimeMillis();
 
 			if (type.equals("backup")) {
-				Cloudsync.backup(structure, cacheFilePath, Integer.parseInt(prop.getProperty("MAX_CACHE_FILE_AGE")), nocache);
+				structure.backup(true);
 			} else if (type.equals("restore")) {
-				Cloudsync.restore(structure, cacheFilePath, limitPattern);
+				structure.restore(true, limitPattern);
 			} else if (type.equals("list")) {
-				Cloudsync.list(structure, cacheFilePath, limitPattern, nocache);
+				structure.list(limitPattern);
 			} else if (type.equals("clean")) {
-				Cloudsync.clean(structure, cacheFilePath);
+				structure.clean();
 			}
 
 			final long end = System.currentTimeMillis();
-
+			
 			LOGGER.log(Level.INFO, "\nruntime: " + ((end - start) / 1000.0f) + " seconds");
-		} catch (final CloudsyncException e) {
-
-			LOGGER.log(Level.INFO, "\nERROR: " + e.getLocalizedMessage() + "\n");
-			if (e.getCause() != null) {
-				e.printStackTrace();
+		} finally {
+			
+			try {
+				if( structure != null ) structure.finalize();
+			} catch (CloudsyncException e) {
+				throw e;
 			}
 		}
 	}
+	
+	private void printHelp(){
+		final HelpFormatter formatter = new HelpFormatter();
+		formatter.setWidth(120);
+		formatter.setOptionComparator(new Comparator<Option>() {
 
-	private static void clean(final Structure structure, final Path cacheFilePath) throws CloudsyncException {
-
-		LOGGER.log(Level.INFO, "load structure from server");
-		structure.buildStructureFromRemoteConnection();
-
-		LOGGER.log(Level.INFO, "start clean");
-		structure.clean();
-		structure.saveChangedStructureToFile(cacheFilePath);
-	}
-
-	private static void restore(final Structure structure, final Path cacheFilePath, String limitPattern) throws CloudsyncException {
-
-		LOGGER.log(Level.INFO, "load structure from server");
-		structure.buildStructureFromRemoteConnection();
-
-		LOGGER.log(Level.INFO, "start restore");
-		structure.restore(true, limitPattern);
-		structure.saveChangedStructureToFile(cacheFilePath);
-	}
-
-	private static void list(final Structure structure, final Path cacheFilePath, String limitPattern, final Boolean nocache) throws CloudsyncException {
-
-		if (Files.exists(cacheFilePath) && !nocache.booleanValue()) {
-
-			LOGGER.log(Level.INFO, "load structure from cache");
-			structure.buildStructureFromFile(cacheFilePath);
-		} else {
-
-			LOGGER.log(Level.INFO, "load structure from server");
-			structure.buildStructureFromRemoteConnection();
-		}
-
-		LOGGER.log(Level.INFO, "");
-		structure.list(limitPattern);
-		structure.saveChangedStructureToFile(cacheFilePath);
-	}
-
-	private static void backup(final Structure structure, final Path cacheFilePath, final Integer maxCacheAge, final Boolean nocache) throws CloudsyncException {
-
-		if (Files.exists(cacheFilePath) && !nocache.booleanValue()) {
-
-			if (!FileUtils.isFileNewer(cacheFilePath.toFile(), new Date().getTime() - (maxCacheAge * 24 * 60 * 60) * 1000)) {
-
-				LOGGER.log(Level.INFO, "state file is older than " + maxCacheAge + " days. force a server refresh.");
-				try {
-					Files.delete(cacheFilePath);
-				} catch (final IOException e) {
-					throw new CloudsyncException("Can't delete cache file", e);
-				}
-				structure.buildStructureFromRemoteConnection();
-			} else {
-
-				LOGGER.log(Level.INFO, "load structure from cache");
-				structure.buildStructureFromFile(cacheFilePath);
+			@Override
+			public int compare(Option o1, Option o2) {
+				if( positions.indexOf(o1)<positions.indexOf(o2) ) return -1;
+				if( positions.indexOf(o1)>positions.indexOf(o2) ) return 1;
+				return 0;
 			}
-		} else {
-
-			LOGGER.log(Level.INFO, "load structure from server");
-			structure.buildStructureFromRemoteConnection();
-		}
-
-		LOGGER.log(Level.INFO, "start sync");
-		structure.backup(true);
-		structure.saveChangedStructureToFile(cacheFilePath);
+		});
+		//formatter.setOptPrefix("");
+		formatter.printHelp("cloudsync <options>", options);
 	}
 
 	public static void main(final String[] args) throws ParseException {
 
 		final Cloudsync cloudsync = new Cloudsync(args);
-		cloudsync.start();
+		try{
+		    cloudsync.start();
+		} catch( UsageException e){
+			if(!StringUtils.isEmpty(e.getMessage())) LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
+			cloudsync.printHelp();
+		} catch( CloudsyncException e){
+			LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
+			if (e.getCause() != null) {
+				e.printStackTrace();
+			}
+		}
 	}
 }

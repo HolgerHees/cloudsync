@@ -20,23 +20,25 @@ public class Item {
 	private String remoteIdentifier;
 	private ItemType type;
 	private Long filesize;
-	private FileTime modifytime;
 	private FileTime creationtime;
+	private FileTime modifytime;
+	private FileTime accesstime;
 	private String group;
 	private String user;
 	private Integer permissions;
 
 	private Map<String, Item> children;
 
-	public Item(final String name, final String remoteIdentifier, final ItemType type, final Long filesize, final FileTime modifytime, final FileTime creationtime, final String group,
-			final String user, final Integer permissions) {
+	public Item(final String name, final String remoteIdentifier, final ItemType type, final Long filesize, final FileTime creationtime, final FileTime modifytime, final FileTime accesstime,
+			final String group, final String user, final Integer permissions) {
 
 		this.name = name;
 		this.remoteIdentifier = remoteIdentifier;
 		this.type = type;
 		this.filesize = filesize;
-		this.modifytime = modifytime;
 		this.creationtime = creationtime;
+		this.modifytime = modifytime;
+		this.accesstime = accesstime;
 		this.group = group;
 		this.user = user;
 		this.permissions = permissions;
@@ -47,7 +49,7 @@ public class Item {
 	}
 
 	public static Item getDummyRoot() {
-		return new Item("", "", ItemType.FOLDER, null, null, null, null, null, null);
+		return new Item("", "", ItemType.FOLDER, null, null, null, null, null, null, null);
 	}
 
 	public static Item fromCSV(final CSVRecord values) {
@@ -56,51 +58,55 @@ public class Item {
 		final String remoteIndentifier = values.get(1);
 		final ItemType type = ItemType.fromString(values.get(2));
 		final Long filesize = StringUtils.isEmpty(values.get(3)) ? null : Long.parseLong(values.get(3));
-		final FileTime modifytime = StringUtils.isEmpty(values.get(4)) ? null : FileTime.from(Long.parseLong(values.get(4)), TimeUnit.SECONDS);
-		final FileTime creationtime = StringUtils.isEmpty(values.get(5)) ? null : FileTime.from(Long.parseLong(values.get(5)), TimeUnit.SECONDS);
-		;
-		final String group = StringUtils.isEmpty(values.get(6)) ? null : values.get(6);
-		final String user = StringUtils.isEmpty(values.get(7)) ? null : values.get(7);
-		final Integer permissions = StringUtils.isEmpty(values.get(8)) ? null : Integer.parseInt(values.get(8));
+		final FileTime creationtime = StringUtils.isEmpty(values.get(4)) ? null : FileTime.from(Long.parseLong(values.get(4)), TimeUnit.SECONDS);
+		final FileTime modifytime = StringUtils.isEmpty(values.get(5)) ? null : FileTime.from(Long.parseLong(values.get(5)), TimeUnit.SECONDS);
+		final FileTime accesstime = StringUtils.isEmpty(values.get(6)) ? null : FileTime.from(Long.parseLong(values.get(6)), TimeUnit.SECONDS);
+		final String group = StringUtils.isEmpty(values.get(7)) ? null : values.get(7);
+		final String user = StringUtils.isEmpty(values.get(8)) ? null : values.get(8);
+		final Integer permissions = StringUtils.isEmpty(values.get(9)) ? null : Integer.parseInt(values.get(9));
 
-		return new Item(name, remoteIndentifier, type, filesize, modifytime, creationtime, group, user, permissions);
+		return new Item(name, remoteIndentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
 	}
 
 	public String[] toArray() {
 
 		return new String[] { getPath(), remoteIdentifier, type.toString(), filesize == null ? null : filesize.toString(),
-				modifytime == null ? null : new Long(modifytime.to(TimeUnit.SECONDS)).toString(), creationtime == null ? null : new Long(creationtime.to(TimeUnit.SECONDS)).toString(),
-						group == null ? null : group, user == null ? null : user, permissions == null ? null : permissions.toString() };
+				creationtime == null ? null : new Long(creationtime.to(TimeUnit.SECONDS)).toString(), modifytime == null ? null : new Long(modifytime.to(TimeUnit.SECONDS)).toString(),
+				accesstime == null ? null : new Long(accesstime.to(TimeUnit.SECONDS)).toString(), group == null ? null : group, user == null ? null : user,
+				permissions == null ? null : permissions.toString() };
 	}
 
 	public static Item fromMetadata(final String name, final String remoteIdentifier, final boolean isFolder, final String[] metadata) {
 
 		ItemType type;
 		Long filesize = null;
-		FileTime modifytime = null;
 		FileTime creationtime = null;
+		FileTime modifytime = null;
+		FileTime accesstime = null;
 		String group = null;
 		String user = null;
 		Integer permissions = null;
 		if (metadata != null) {
 			type = ItemType.fromString(metadata[0]);
 			filesize = StringUtils.isEmpty(metadata[1]) ? null : Long.parseLong(metadata[1]);
-			modifytime = StringUtils.isEmpty(metadata[2]) ? null : FileTime.from(Long.parseLong(metadata[2]), TimeUnit.SECONDS);
-			creationtime = StringUtils.isEmpty(metadata[3]) ? null : FileTime.from(Long.parseLong(metadata[3]), TimeUnit.SECONDS);
-			group = StringUtils.isEmpty(metadata[4]) ? null : metadata[4];
-			user = StringUtils.isEmpty(metadata[5]) ? null : metadata[5];
-			permissions = StringUtils.isEmpty(metadata[6]) ? null : Integer.parseInt(metadata[6]);
+			creationtime = StringUtils.isEmpty(metadata[2]) ? null : FileTime.from(Long.parseLong(metadata[2]), TimeUnit.SECONDS);
+			modifytime = StringUtils.isEmpty(metadata[3]) ? null : FileTime.from(Long.parseLong(metadata[3]), TimeUnit.SECONDS);
+			accesstime = StringUtils.isEmpty(metadata[4]) ? null : FileTime.from(Long.parseLong(metadata[4]), TimeUnit.SECONDS);
+			group = StringUtils.isEmpty(metadata[5]) ? null : metadata[5];
+			user = StringUtils.isEmpty(metadata[6]) ? null : metadata[6];
+			permissions = StringUtils.isEmpty(metadata[7]) ? null : Integer.parseInt(metadata[7]);
 		} else {
 			type = isFolder ? ItemType.FOLDER : ItemType.FILE;
 		}
 
-		return new Item(name, remoteIdentifier, type, filesize, modifytime, creationtime, group, user, permissions);
+		return new Item(name, remoteIdentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
 	}
 
 	public String[] getMetadata() {
 
-		return new String[] { type.toString(), filesize != null ? filesize.toString() : null, modifytime != null ? new Long(modifytime.to(TimeUnit.SECONDS)).toString() : null,
-				creationtime != null ? new Long(creationtime.to(TimeUnit.SECONDS)).toString() : null, group, user, permissions != null ? permissions.toString() : null };
+		return new String[] { type.toString(), filesize != null ? filesize.toString() : null, creationtime != null ? new Long(creationtime.to(TimeUnit.SECONDS)).toString() : null,
+				modifytime != null ? new Long(modifytime.to(TimeUnit.SECONDS)).toString() : null, accesstime != null ? new Long(accesstime.to(TimeUnit.SECONDS)).toString() : null, group, user,
+				permissions != null ? permissions.toString() : null };
 	}
 
 	public void setParent(final Item parent) {
@@ -145,12 +151,15 @@ public class Item {
 		if (isChanged(filesize, item.filesize)) {
 			return true;
 		}
-		if (isChanged(modifytime, item.modifytime)) {
-			return true;
-		}
 		if (isChanged(creationtime, item.creationtime)) {
 			return true;
 		}
+		if (isChanged(modifytime, item.modifytime)) {
+			return true;
+		}
+		/*if (isChanged(accesstime, item.accesstime)) {
+			return true;
+		}*/
 		return false;
 	}
 
@@ -159,12 +168,15 @@ public class Item {
 		if (isChanged(filesize, item.filesize)) {
 			return true;
 		}
-		if (isChanged(modifytime, item.modifytime)) {
-			return true;
-		}
 		if (isChanged(creationtime, item.creationtime)) {
 			return true;
 		}
+		if (isChanged(modifytime, item.modifytime)) {
+			return true;
+		}
+		/*if (isChanged(accesstime, item.accesstime)) {
+			return true;
+		}*/
 		if (isChanged(group, item.group)) {
 			return true;
 		}
@@ -232,8 +244,18 @@ public class Item {
 		return permissions;
 	}
 
+	public FileTime getCreationTime() {
+
+		return creationtime;
+	}
+
 	public FileTime getModifyTime() {
 
 		return modifytime;
+	}
+
+	public FileTime getAccessTime() {
+
+		return accesstime;
 	}
 }

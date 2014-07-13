@@ -3,6 +3,6 @@ REMOTE_CLIENT_ID=
 REMOTE_CLIENT_SECRET=
 REMOTE_CLIENT_TOKEN_PATH=./.cloudsync.token
 REMOTE_DIR=/backup
-MAX_CACHE_FILE_AGE=7
 CACHE_FILE=./.cloudsync_{name}.cache
- 
+LOCK_FILE=./.cloudsync_{name}.lock
+PID_FILE=./.cloudsync_{name}.pid

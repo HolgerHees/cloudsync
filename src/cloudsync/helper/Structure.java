@@ -5,7 +5,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +40,8 @@ public class Structure {
 
 	private final static Logger LOGGER = Logger.getLogger(Structure.class.getName());
 
+	private final String name;
+
 	private final LocalFilesystemConnector localConnection;
 	private final RemoteConnector remoteConnection;
 	private final Crypt crypt;
@@ -42,12 +52,12 @@ public class Structure {
 	private final LinkType followlinks;
 	private final boolean nopermissions;
 	private final int history;
+	
+	private Path cacheFilePath;
+	private Path lockFilePath;
+	private Path pidFilePath;
 
-	private enum ChangedType {
-		UNCHANGED, REFRESHED, CHANGED
-	}
-
-	private ChangedType structureIsChanged = ChangedType.UNCHANGED;
+	private boolean isLocked = false;
 
 	class Status {
 
@@ -57,9 +67,10 @@ public class Structure {
 		private int skip = 0;
 	}
 
-	public Structure(final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag, final LinkType followlinks,
+	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag, final LinkType followlinks,
 			final boolean nopermissions, final int history) {
 
+		this.name = name;
 		this.localConnection = localConnection;
 		this.remoteConnection = remoteConnection;
 		this.crypt = crypt;
@@ -72,7 +83,104 @@ public class Structure {
 		duplicates = new ArrayList<Item>();
 	}
 
-	public void buildStructureFromFile(final Path cacheFilePath) throws CloudsyncException {
+
+	public void init(String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException {
+
+		cacheFilePath = Paths.get(cacheFile.replace("{name}", name));
+		lockFilePath = Paths.get(lockFile.replace("{name}", name));
+		pidFilePath = Paths.get(pidFile.replace("{name}", name));
+
+		if( !forcestart && Files.exists(pidFilePath, LinkOption.NOFOLLOW_LINKS) ){
+			throw new CloudsyncException("Other job is running or previous job has crashed. If you are sure that no other job is running use the option '--forcestart'");
+		}
+		
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+        String jvmName = bean.getName();
+        long pid = Long.valueOf(jvmName.split("@")[0]);
+
+        try {
+			Files.write(pidFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			throw new CloudsyncException("Couldn't create '"+pidFilePath.toString()+"'");
+		}
+        
+		if( Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS) ){
+			LOGGER.log(Level.WARNING,"Found an inconsistent cache file state. Possibly previous job has crashed. Force a cache file rebuild.");
+			nocache = true;
+		}
+		
+		if( !nocache && Files.exists(cacheFilePath, LinkOption.NOFOLLOW_LINKS) ){
+			LOGGER.log(Level.INFO, "load structure from cache file");
+			readCSVStructure(cacheFilePath);
+		}
+		else{
+			LOGGER.log(Level.INFO, "load structure from remote server");
+			createLock();
+			readRemoteStructure(root);
+		}
+		releaseLock();
+	}
+	
+	public void finalize() throws CloudsyncException{
+		
+		try {
+			Files.delete(pidFilePath);
+		} catch (IOException e) {
+			throw new CloudsyncException("Couldn't remove '"+pidFilePath.toString()+"'");
+		}
+	}
+	
+	private void createLock() throws CloudsyncException{
+		
+		if( isLocked ) return;
+		
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+        String jvmName = bean.getName();
+        long pid = Long.valueOf(jvmName.split("@")[0]);
+
+        try {
+			Files.write(lockFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE);
+		} catch (IOException e) {
+			throw new CloudsyncException("Couldn't create '"+lockFilePath.toString()+"'");
+		}
+        
+        isLocked = true;
+	}
+
+	private void releaseLock() throws CloudsyncException{
+		
+		if( !isLocked ) return;
+		
+		try {
+			Files.delete(lockFilePath);
+		} catch (IOException e) {
+			throw new CloudsyncException("Couldn't remove '"+lockFilePath.toString()+"'");
+		}
+
+		try {
+			LOGGER.log(Level.INFO, "write structure to cache file");
+			final PrintWriter out = new PrintWriter(cacheFilePath.toFile());
+			final CSVPrinter csvOut = new CSVPrinter(out, CSVFormat.EXCEL);
+			writeStructureToCSVPrinter(csvOut, root);
+			out.close();
+		} catch (final IOException e) {
+			throw new CloudsyncException("Can't write cache file on '" + cacheFilePath.toString() + "'", e);
+		}
+
+		isLocked = false;
+	}
+	
+	private void writeStructureToCSVPrinter(final CSVPrinter out, final Item parentItem) throws IOException {
+
+		for (final Item child : parentItem.getChildren().values()) {
+			out.printRecord(Arrays.asList(child.toArray()));
+			if (child.isType(ItemType.FOLDER)) {
+				writeStructureToCSVPrinter(out, child);
+			}
+		}
+	}
+
+	private void readCSVStructure(final Path cacheFilePath) throws CloudsyncException {
 
 		final Map<String, Item> mapping = new HashMap<String, Item>();
 		mapping.put("", root);
@@ -95,12 +203,7 @@ public class Structure {
 		}
 	}
 
-	public void buildStructureFromRemoteConnection() throws CloudsyncException {
-		structureIsChanged = ChangedType.REFRESHED;
-		_walkRemoteStructure(root);
-	}
-
-	private void _walkRemoteStructure(final Item parentItem) throws CloudsyncException {
+	private void readRemoteStructure(final Item parentItem) throws CloudsyncException {
 
 		final List<Item> childItems = remoteConnection.readFolder(this, parentItem);
 
@@ -120,7 +223,7 @@ public class Structure {
 			}
 
 			if (childItem.isType(ItemType.FOLDER)) {
-				_walkRemoteStructure(childItem);
+				readRemoteStructure(childItem);
 			}
 		}
 	}
@@ -148,10 +251,10 @@ public class Structure {
 	}
 
 	public void list(String limitPattern) throws CloudsyncException {
-		_listRemoteStructure(root,limitPattern);
+		list(limitPattern,root);
 	}
 
-	private void _listRemoteStructure(final Item item, String limitPattern) throws CloudsyncException {
+	private void list(final String limitPattern,final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 
@@ -161,16 +264,16 @@ public class Structure {
 			LOGGER.log(Level.INFO, path);
 
 			if (child.isType(ItemType.FOLDER)) {
-				_listRemoteStructure(child, limitPattern);
+				list(limitPattern,child);
 			}
 		}
 	}
 
-	public void restore(final boolean perform, String limitPattern) throws CloudsyncException {
-		_restoreRemoteStructure(root, perform, limitPattern);
+	public void restore(final boolean perform, final String limitPattern) throws CloudsyncException {
+		restore(perform, limitPattern,root);
 	}
 
-	private void _restoreRemoteStructure(final Item item, final boolean perform, String limitPattern) throws CloudsyncException {
+	private void restore(final boolean perform, final String limitPattern,final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 			
@@ -184,7 +287,7 @@ public class Structure {
 			}
 
 			if (child.isType(ItemType.FOLDER)) {
-				_restoreRemoteStructure(child, perform,limitPattern);
+				restore(perform,limitPattern,child);
 			}
 		}
 	}
@@ -208,9 +311,13 @@ public class Structure {
 
 		final Status status = new Status();
 
-		_backupLocalStructure(root, perform, status);
+		backup(perform, root, status);
+		
+		boolean isChanged = isLocked;
 
-		if (structureIsChanged.equals(ChangedType.CHANGED)) {
+		releaseLock();
+
+		if (isChanged) {
 			remoteConnection.cleanHistory(this, history);
 		}
 
@@ -222,7 +329,7 @@ public class Structure {
 		LOGGER.log(Level.INFO, "skipped items: " + (new Integer(status.skip).toString()));
 	}
 
-	private void _backupLocalStructure(final Item remoteParentItem, final boolean perform, final Status status) throws CloudsyncException {
+	private void backup(final boolean perform, final Item remoteParentItem, final Status status) throws CloudsyncException {
 
 		final Map<String, Item> unusedRemoteChildItems = remoteParentItem.getChildren();
 
@@ -237,8 +344,8 @@ public class Structure {
 				remoteParentItem.addChild(remoteChildItem);
 				LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
 				if (perform) {
+					createLock();
 					remoteConnection.upload(this, remoteChildItem);
-					structureIsChanged = ChangedType.CHANGED;
 				}
 				status.create++;
 			} else {
@@ -251,8 +358,8 @@ public class Structure {
 				if (localChildItem.isTypeChanged(remoteChildItem)) {
 					LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
 					if (perform) {
+						createLock();
 						remoteConnection.remove(this, remoteChildItem);
-						structureIsChanged = ChangedType.CHANGED;
 					}
 					status.remove++;
 
@@ -260,8 +367,8 @@ public class Structure {
 					remoteParentItem.addChild(remoteChildItem);
 					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
 					if (perform) {
+						createLock();
 						remoteConnection.upload(this, localChildItem);
-						structureIsChanged = ChangedType.CHANGED;
 					}
 					status.create++;
 				}
@@ -271,8 +378,8 @@ public class Structure {
 					remoteChildItem.update(localChildItem);
 					LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
 					if (perform) {
+						createLock();
 						remoteConnection.update(this, remoteChildItem, isFiledataChanged);
-						structureIsChanged = ChangedType.CHANGED;
 					}
 					status.update++;
 				} else {
@@ -283,7 +390,7 @@ public class Structure {
 			unusedRemoteChildItems.remove(remoteChildItem.getName());
 
 			if (remoteChildItem.isType(ItemType.FOLDER)) {
-				_backupLocalStructure(remoteChildItem, perform, status);
+				backup(perform, remoteChildItem, status);
 			}
 		}
 
@@ -291,8 +398,8 @@ public class Structure {
 			LOGGER.log(Level.FINE, "remove " + item.getTypeName() + " '" + item.getPath() + "'");
 			remoteParentItem.removeChild(item);
 			if (perform) {
+				createLock();
 				remoteConnection.remove(this, item);
-				structureIsChanged = ChangedType.CHANGED;
 			}
 			status.remove++;
 		}
@@ -310,35 +417,6 @@ public class Structure {
 		}
 
 		return list;
-	}
-
-	public void saveChangedStructureToFile(final Path cacheFilePath) throws CloudsyncException {
-
-		if (structureIsChanged.equals(ChangedType.UNCHANGED)) {
-			return;
-		}
-
-		LOGGER.log(Level.FINE, "update cache file.");
-		try {
-			final PrintWriter out = new PrintWriter(cacheFilePath.toFile());
-			final CSVPrinter csvOut = new CSVPrinter(out, CSVFormat.EXCEL);
-			_saveToStructureFile(csvOut, root);
-			out.close();
-		} catch (final IOException e) {
-			throw new CloudsyncException("Can't write cache file on '" + cacheFilePath.toString() + "'", e);
-		}
-	}
-
-	private void _saveToStructureFile(final CSVPrinter out, final Item parentItem) throws IOException {
-
-		for (final Item child : parentItem.getChildren().values()) {
-
-			out.printRecord(Arrays.asList(child.toArray()));
-
-			if (child.isType(ItemType.FOLDER)) {
-				_saveToStructureFile(out, child);
-			}
-		}
 	}
 
 	public Item getRootItem() {

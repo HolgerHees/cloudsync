@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -106,7 +107,7 @@ public class LocalFilesystemConnector {
 		if (exists(path)) {
 
 			if (!duplicateFlag.equals(DuplicateType.UPDATE)) {
-				throw new CloudsyncException("item '" + item.getPath() + "' exists");
+				throw new CloudsyncException("Item already '" + item.getPath() + "' exists. Try to specify another '--duplicate' behavior.");
 			}
 
 			if ((!item.isType(ItemType.FOLDER) || !isDir(path))) {
@@ -179,23 +180,12 @@ public class LocalFilesystemConnector {
 		}
 
 		try {
-			Files.setLastModifiedTime(path, item.getModifyTime());
+			Files.getFileAttributeView(path, BasicFileAttributeView.class).setTimes(item.getModifyTime(), item.getAccessTime(), item.getCreationTime());
 		} catch (final IOException e) {
-			throw new CloudsyncException("Can't set modify time of " + item.getTypeName() + " '" + item.getPath() + "'", e);
+			throw new CloudsyncException("Can't set create, modify and access time of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 		}
 
 		if (!nopermissions) {
-
-			final Integer permissions = item.getPermissions();
-			if (permissions != null) {
-
-				try {
-
-					Files.setPosixFilePermissions(path, toPermissions(permissions));
-				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'", e);
-				}
-			}
 
 			final UserPrincipalLookupService lookupService = FileSystems.getDefault().getUserPrincipalLookupService();
 			final String groupName = item.getGroup();
@@ -227,6 +217,17 @@ public class LocalFilesystemConnector {
 					throw new CloudsyncException("User '" + item.getUser() + "' on '" + item.getPath() + "' not found");
 				} catch (final IOException e) {
 					throw new CloudsyncException("Can't set user '" + item.getUser() + "' of '" + item.getPath() + "'", e);
+				}
+			}
+
+			final Integer permissions = item.getPermissions();
+			if (permissions != null) {
+
+				try {
+
+					Files.setPosixFilePermissions(path, toPermissions(permissions));
+				} catch (final IOException e) {
+					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 				}
 			}
 		}
@@ -277,6 +278,7 @@ public class LocalFilesystemConnector {
 				final Long filesize = attr.size();
 				final FileTime creationTime = attr.creationTime();
 				final FileTime modifyTime = attr.lastModifiedTime();
+				final FileTime accessTime = attr.lastAccessTime();
 				final String group = attr.group().getName();
 				final String user = attr.owner().getName();
 				final Integer permissions = fromPermissions(attr.permissions());
@@ -291,7 +293,7 @@ public class LocalFilesystemConnector {
 					type = ItemType.UNKNOWN;
 				}
 
-				child_items.add(new Item(path.getFileName().toString(), null, type, filesize, modifyTime, creationTime, group, user, permissions));
+				child_items.add(new Item(path.getFileName().toString(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions));
 			} catch (final IOException e) {
 
 				throw new CloudsyncException("Can't read attributes of '" + path.toString() + "'", e);
