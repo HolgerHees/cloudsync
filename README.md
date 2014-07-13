@@ -7,8 +7,9 @@ It encrypt and decrypt the file, the filenames and all archived metadata with Op
 
 Archived metadata are:
 - filesize
-- modifytime
 - createtime 
+- modifytime
+- accesstime
 - gid
 - uid
 - permissions
