@@ -22,33 +22,23 @@ By default, the entire cache is every 7 days completely rebuilt based on servers
 ```
 usage: cloudsync <options>
  -b,--backup <path>                    Create or refresh backup of <path>
- -c,--clean <path>                     Repair 'cloudsync*.cache' file and
-                                       put leftover file into <path>
-    --config <path>                    Config file path. Default is
-                                       /etc/cloudsync, ~/.cloudsync.config
-    --duplicate <stop|update|rename>   Behavior on existing files
-                                       <stop> - stop immediately -
-                                       (default)
-                                       <update> - replace file
-                                       <rename> - extend the name with an
-                                       autoincrement number
-    --followlinks <extern|all|none>    How to handle symbolic links
-                                       <extern> - convert external links
-                                       where the target is not part of the
-                                       current backup structure -
-                                       (default)
-                                       <all> - convert all symbolic links
-                                       <none> - convert no symbolic links
-                                       to real files or folders
- -h,--help                             Show this help
-    --history <count>                  Before remove or update a file or
-                                       folder move it to a history folder.
-                                       Use a maximum of <count> history
-                                       folders
- -n,--name <name>                      Backup name
-    --nocache                          Don't use 'cloudsync*.cache' file
-                                       (much slower)
-    --nopermissions                    Don't restore permission, group and
-                                       owner attributes
  -r,--restore <path>                   Restore a backup into <path>
+ -c,--clean <path>                     Repair 'cloudsync*.cache' file and put leftover file into <path>
+ -l,--list                             List the contents of an backup
+ -n,--name <name>                      Backup name of --backup, --restore, --clean or --list
+    --config <path>                    Config file path. Default is './config/cloudsync.config'
+    --limit <pattern>                  Limit contents paths of --restore or --list to regex based ^<pattern>$
+    --followlinks <extern|all|none>    How to handle symbolic links
+                                       <extern> - convert external links where the target is not part of the current
+                                       backup structure - (default)
+                                       <all> - convert all symbolic links
+                                       <none> - convert no symbolic links to real files or folders
+    --duplicate <stop|update|rename>   Behavior on existing files
+                                       <stop> - stop immediately - (default)
+                                       <update> - replace file
+                                       <rename> - extend the name with an autoincrement number
+    --history <count>                  Before remove or update a file or folder move it to a history folder.
+                                       Use a maximum of <count> history folders
+    --nocache                          Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
+ -h,--help                             Show this help
 ```
