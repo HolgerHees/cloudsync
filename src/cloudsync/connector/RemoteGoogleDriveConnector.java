@@ -255,7 +255,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
 				}
 			} else {
-				service.files().delete(item.getRemoteIdentifier());
+				service.files().delete(item.getRemoteIdentifier()).execute();
 			}
 
 			_removeFromCache(item.getRemoteIdentifier());

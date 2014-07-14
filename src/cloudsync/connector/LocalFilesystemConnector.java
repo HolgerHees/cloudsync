@@ -95,6 +95,22 @@ public class LocalFilesystemConnector {
 		}
 	}
 
+	public void prepareParent(Structure structure, Item item) throws CloudsyncException {
+
+		if (item.getParent() != null) {
+
+			Item parentItem = item.getParent();
+
+			final Path parentPath = Paths.get(localPath + Item.SEPARATOR + parentItem.getPath());
+
+			try {
+				Files.createDirectories(parentPath);
+			} catch (IOException e) {
+				throw new CloudsyncException("Can't create " + parentItem.getTypeName() + " '" + parentItem.getPath() + "'", e);
+			}
+		}
+	}
+
 	public void upload(final Structure structure, final Item item, final DuplicateType duplicateFlag, final boolean nopermissions) throws CloudsyncException {
 
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
@@ -132,11 +148,14 @@ public class LocalFilesystemConnector {
 			}
 		} else {
 
-			final Path parentPath = Paths.get(localPath + Item.SEPARATOR + item.getParent().getPath());
+			if (item.getParent() != null) {
 
-			if (!isDir(parentPath)) {
+				final Path parentPath = Paths.get(localPath + Item.SEPARATOR + item.getParent().getPath());
 
-				throw new CloudsyncException("Parent directory of " + item.getTypeName() + " '" + item.getPath() + "' is missing.");
+				if (!isDir(parentPath)) {
+
+					throw new CloudsyncException("Parent directory of " + item.getTypeName() + " '" + item.getPath() + "' is missing.");
+				}
 			}
 
 			if (item.isType(ItemType.LINK)) {
@@ -236,8 +255,8 @@ public class LocalFilesystemConnector {
 	public List<Item> readFolder(final Structure structure, final Item item, final LinkType followlinks) throws CloudsyncException {
 
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
-		
-		//System.out.println(currentPath);
+
+		// System.out.println(currentPath);
 
 		final List<Item> child_items = new ArrayList<Item>();
 

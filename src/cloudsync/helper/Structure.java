@@ -148,7 +148,7 @@ public class Structure {
 
 	private void releaseLock() throws CloudsyncException {
 
-		if (!isLocked)
+		if (!isLocked || duplicates.size() > 0)
 			return;
 
 		try {
@@ -216,6 +216,7 @@ public class Structure {
 					parentItem.addChild(childItem);
 					duplicates.add(existingChildItem);
 				} else {
+					childItem.setParent(parentItem);
 					duplicates.add(childItem);
 				}
 			} else {
@@ -239,6 +240,7 @@ public class Structure {
 			for (final Item item : list) {
 				localConnection.prepareUpload(this, item, duplicateFlag);
 				LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
+				localConnection.prepareParent(this, item);
 				localConnection.upload(this, item, duplicateFlag, nopermissions);
 			}
 
@@ -247,6 +249,8 @@ public class Structure {
 				LOGGER.log(Level.FINE, "clean " + item.getTypeName() + " '" + item.getPath() + "'");
 				remoteConnection.remove(this, item);
 			}
+			duplicates.clear();
+			releaseLock();
 		}
 	}
 

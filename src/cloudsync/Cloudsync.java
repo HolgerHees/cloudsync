@@ -203,7 +203,7 @@ public class Cloudsync {
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
 
-		final Integer history = Integer.parseInt(cmd.getOptionValue("history", "0"));
+		final Integer history = type.equals("backup") ? Integer.parseInt(cmd.getOptionValue("history", "0")) : 0;
 
 		final boolean nopermissions = cmd.hasOption("nopermissions");
 		final boolean nocache = cmd.hasOption("nocache");
