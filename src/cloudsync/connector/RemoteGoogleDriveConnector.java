@@ -61,7 +61,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	final static String FOLDER = "application/vnd.google-apps.folder";
 	final static String FILE = "application/octet-stream";
 
-	final static int RETRY_COUNT = 1;
+	final static int RETRY_COUNT = 2;
 
 	private GoogleTokenResponse clientToken;
 	private GoogleCredential credential;
@@ -566,9 +566,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			// Caused by: java.io.IOException: insufficient data written
 			// VALIDATE: owncloud/Fotos/2008.10.04-09 Zypern/img_2875.jpg
 
-			LOGGER.log(Level.WARNING, "retry " + count);
+			count++;
 
-			return count++;
+			LOGGER.log(Level.WARNING, "'" + e.getMessage() + "'. " + count + ". retry");
+
+			return count;
 		}
 
 		throw new CloudsyncException("Unexpected error during " + name + " of " + item.getTypeName() + " '" + item.getPath() + "'", e);
