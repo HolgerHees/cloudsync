@@ -111,14 +111,14 @@ public class Crypt {
 		}
 	}
 
-	public InputStream getEncryptedBinary(final File file, final Item item) throws CryptException, IOException {
+	public byte[] getEncryptedBinary(final File file, final Item item) throws CryptException, IOException {
 
 		if (item.isType(ItemType.LINK)) {
 
-			return new ByteArrayInputStream(_encryptData(Files.readSymbolicLink(file.toPath()).toString().getBytes(), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR));
+			return _encryptData(Files.readSymbolicLink(file.toPath()).toString().getBytes(), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 		} else if (item.isType(ItemType.FILE)) {
 
-			return new ByteArrayInputStream(_encryptData(Files.readAllBytes(file.toPath()), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR));
+			return _encryptData(Files.readAllBytes(file.toPath()), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 		}
 
 		return null;

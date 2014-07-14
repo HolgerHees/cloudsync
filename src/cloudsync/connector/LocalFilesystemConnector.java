@@ -236,6 +236,8 @@ public class LocalFilesystemConnector {
 	public List<Item> readFolder(final Structure structure, final Item item, final LinkType followlinks) throws CloudsyncException {
 
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
+		
+		//System.out.println(currentPath);
 
 		final List<Item> child_items = new ArrayList<Item>();
 
@@ -293,7 +295,7 @@ public class LocalFilesystemConnector {
 					type = ItemType.UNKNOWN;
 				}
 
-				child_items.add(new Item(path.getFileName().toString(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions));
+				child_items.add(new Item(_file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions));
 			} catch (final IOException e) {
 
 				throw new CloudsyncException("Can't read attributes of '" + path.toString() + "'", e);

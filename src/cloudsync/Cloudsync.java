@@ -28,7 +28,7 @@ import cloudsync.connector.RemoteGoogleDriveConnector;
 import cloudsync.helper.CloudsyncException;
 import cloudsync.helper.Crypt;
 import cloudsync.helper.Helper;
-import cloudsync.helper.LogfileFormatter;
+import cloudsync.helper.LogfileHandler;
 import cloudsync.helper.Structure;
 import cloudsync.helper.UsageException;
 import cloudsync.model.DuplicateType;
@@ -44,11 +44,11 @@ public class Cloudsync {
 	private final String[] args;
 
 	public Cloudsync(final String[] args) {
-		
+
 		this.args = args;
 
 		positions = new ArrayList<Option>();
-		
+
 		options = new Options();
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
@@ -167,19 +167,17 @@ public class Cloudsync {
 
 		final Logger logger = Logger.getLogger("cloudsync");
 		logger.setLevel(Level.ALL);
-		final ConsoleHandler handler = new ConsoleHandler();
-		handler.setFormatter(new LogfileFormatter());
+		final ConsoleHandler handler = new LogfileHandler();
 		handler.setLevel(Level.ALL);
 		logger.addHandler(handler);
 		logger.setUseParentHandlers(false);
 
 		final CommandLineParser parser = new GnuParser();
 		CommandLine cmd;
-		try{
+		try {
 			cmd = parser.parse(options, args);
-		}
-		catch( ParseException e ){
-			
+		} catch (ParseException e) {
+
 			throw new UsageException(e.getMessage());
 		}
 
@@ -200,7 +198,7 @@ public class Cloudsync {
 		final LinkType followlinks = LinkType.fromName(cmd.getOptionValue("followlinks", LinkType.EXTERNAL.getName()));
 		final DuplicateType duplicate = DuplicateType.fromName(cmd.getOptionValue("duplicate", DuplicateType.STOP.getName()));
 
-		String config = cmd.getOptionValue("config","."+Item.SEPARATOR+"config"+Item.SEPARATOR+"cloudsync.config");
+		String config = cmd.getOptionValue("config", "." + Item.SEPARATOR + "config" + Item.SEPARATOR + "cloudsync.config");
 		if (config.startsWith("." + Item.SEPARATOR)) {
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
@@ -223,10 +221,10 @@ public class Cloudsync {
 		}
 
 		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid) {
-			
+
 			List<String> messages = new ArrayList<String>();
-			if( cmd.getOptions().length > 0 ){
-				
+			if (cmd.getOptions().length > 0) {
+
 				messages.add("error: missing or wrong options");
 				if (type == null) {
 					messages.add(" You must specifiy --backup, --restore, --list or --clean");
@@ -248,7 +246,7 @@ public class Cloudsync {
 					messages.add(" --config <path> not valid");
 				}
 			}
-			throw new UsageException(StringUtils.join(messages,'\n'));
+			throw new UsageException(StringUtils.join(messages, '\n'));
 		}
 
 		final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "REMOTE_DIR", "PASSPHRASE", "CACHE_FILE", "LOCK_FILE", "PID_FILE" };
@@ -261,15 +259,15 @@ public class Cloudsync {
 		final Crypt crypt = new Crypt(prop.getProperty("PASSPHRASE"));
 
 		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(path);
-		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.d_H.m.s");
-		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(prop.getProperty("REMOTE_CLIENT_ID"), prop.getProperty("REMOTE_CLIENT_SECRET"), Helper.getPathProperty(prop,"REMOTE_CLIENT_TOKEN_PATH"),
-				prop.getProperty("REMOTE_DIR"), name, history > 0 ? name + " " + sdf.format(new Date()) : null);
+		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss");
+		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(prop.getProperty("REMOTE_CLIENT_ID"), prop.getProperty("REMOTE_CLIENT_SECRET"), Helper.getPathProperty(prop,
+				"REMOTE_CLIENT_TOKEN_PATH"), prop.getProperty("REMOTE_DIR"), name, history > 0 ? name + " " + sdf.format(new Date()) : null);
 
 		Structure structure = null;
 		try {
 
 			structure = new Structure(name, localConnection, remoteConnection, crypt, duplicate, followlinks, nopermissions, history);
-			structure.init(Helper.getPathProperty(prop,"CACHE_FILE"),Helper.getPathProperty(prop,"LOCK_FILE"),Helper.getPathProperty(prop,"PID_FILE"),nocache,forcestart);
+			structure.init(Helper.getPathProperty(prop, "CACHE_FILE"), Helper.getPathProperty(prop, "LOCK_FILE"), Helper.getPathProperty(prop, "PID_FILE"), nocache, forcestart);
 
 			final long start = System.currentTimeMillis();
 
@@ -284,43 +282,47 @@ public class Cloudsync {
 			}
 
 			final long end = System.currentTimeMillis();
-			
+
 			LOGGER.log(Level.INFO, "\nruntime: " + ((end - start) / 1000.0f) + " seconds");
 		} finally {
-			
+
 			try {
-				if( structure != null ) structure.finalize();
+				if (structure != null)
+					structure.finalize();
 			} catch (CloudsyncException e) {
 				throw e;
 			}
 		}
 	}
-	
-	private void printHelp(){
+
+	private void printHelp() {
 		final HelpFormatter formatter = new HelpFormatter();
 		formatter.setWidth(120);
 		formatter.setOptionComparator(new Comparator<Option>() {
 
 			@Override
 			public int compare(Option o1, Option o2) {
-				if( positions.indexOf(o1)<positions.indexOf(o2) ) return -1;
-				if( positions.indexOf(o1)>positions.indexOf(o2) ) return 1;
+				if (positions.indexOf(o1) < positions.indexOf(o2))
+					return -1;
+				if (positions.indexOf(o1) > positions.indexOf(o2))
+					return 1;
 				return 0;
 			}
 		});
-		//formatter.setOptPrefix("");
+		// formatter.setOptPrefix("");
 		formatter.printHelp("cloudsync <options>", options);
 	}
 
 	public static void main(final String[] args) throws ParseException {
 
 		final Cloudsync cloudsync = new Cloudsync(args);
-		try{
-		    cloudsync.start();
-		} catch( UsageException e){
-			if(!StringUtils.isEmpty(e.getMessage())) LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
+		try {
+			cloudsync.start();
+		} catch (UsageException e) {
+			if (!StringUtils.isEmpty(e.getMessage()))
+				LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
 			cloudsync.printHelp();
-		} catch( CloudsyncException e){
+		} catch (CloudsyncException e) {
 			LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
 			if (e.getCause() != null) {
 				e.printStackTrace();

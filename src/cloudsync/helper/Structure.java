@@ -9,11 +9,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,10 +50,11 @@ public class Structure {
 	private final LinkType followlinks;
 	private final boolean nopermissions;
 	private final int history;
-	
+
 	private Path cacheFilePath;
 	private Path lockFilePath;
 	private Path pidFilePath;
+	private boolean pidCleanup = true;
 
 	private boolean isLocked = false;
 
@@ -67,8 +66,8 @@ public class Structure {
 		private int skip = 0;
 	}
 
-	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag, final LinkType followlinks,
-			final boolean nopermissions, final int history) {
+	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
+			final LinkType followlinks, final boolean nopermissions, final int history) {
 
 		this.name = name;
 		this.localConnection = localConnection;
@@ -83,78 +82,79 @@ public class Structure {
 		duplicates = new ArrayList<Item>();
 	}
 
-
 	public void init(String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException {
 
 		cacheFilePath = Paths.get(cacheFile.replace("{name}", name));
 		lockFilePath = Paths.get(lockFile.replace("{name}", name));
 		pidFilePath = Paths.get(pidFile.replace("{name}", name));
 
-		if( !forcestart && Files.exists(pidFilePath, LinkOption.NOFOLLOW_LINKS) ){
+		if (!forcestart && Files.exists(pidFilePath, LinkOption.NOFOLLOW_LINKS)) {
+			pidCleanup = false;
 			throw new CloudsyncException("Other job is running or previous job has crashed. If you are sure that no other job is running use the option '--forcestart'");
 		}
-		
-		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-        String jvmName = bean.getName();
-        long pid = Long.valueOf(jvmName.split("@")[0]);
 
-        try {
+		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+		String jvmName = bean.getName();
+		long pid = Long.valueOf(jvmName.split("@")[0]);
+
+		try {
 			Files.write(pidFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
-			throw new CloudsyncException("Couldn't create '"+pidFilePath.toString()+"'");
+			throw new CloudsyncException("Couldn't create '" + pidFilePath.toString() + "'");
 		}
-        
-		if( Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS) ){
-			LOGGER.log(Level.WARNING,"Found an inconsistent cache file state. Possibly previous job has crashed. Force a cache file rebuild.");
+
+		if (Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS)) {
+			LOGGER.log(Level.WARNING, "Found an inconsistent cache file state. Possibly previous job has crashed. Force a cache file rebuild.");
 			nocache = true;
 		}
-		
-		if( !nocache && Files.exists(cacheFilePath, LinkOption.NOFOLLOW_LINKS) ){
+
+		if (!nocache && Files.exists(cacheFilePath, LinkOption.NOFOLLOW_LINKS)) {
 			LOGGER.log(Level.INFO, "load structure from cache file");
 			readCSVStructure(cacheFilePath);
-		}
-		else{
+		} else {
 			LOGGER.log(Level.INFO, "load structure from remote server");
 			createLock();
 			readRemoteStructure(root);
 		}
 		releaseLock();
 	}
-	
-	public void finalize() throws CloudsyncException{
-		
+
+	public void finalize() throws CloudsyncException {
+
 		try {
-			Files.delete(pidFilePath);
+			if (pidCleanup)
+				Files.delete(pidFilePath);
 		} catch (IOException e) {
-			throw new CloudsyncException("Couldn't remove '"+pidFilePath.toString()+"'");
+			throw new CloudsyncException("Couldn't remove '" + pidFilePath.toString() + "'");
 		}
 	}
-	
-	private void createLock() throws CloudsyncException{
-		
-		if( isLocked ) return;
-		
-		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-        String jvmName = bean.getName();
-        long pid = Long.valueOf(jvmName.split("@")[0]);
 
-        try {
-			Files.write(lockFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE);
+	private void createLock() throws CloudsyncException {
+
+		if (isLocked)
+			return;
+
+		try {
+			if (!Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS)) {
+
+				Files.createFile(lockFilePath);
+			}
 		} catch (IOException e) {
-			throw new CloudsyncException("Couldn't create '"+lockFilePath.toString()+"'");
+			throw new CloudsyncException("Couldn't create '" + lockFilePath.toString() + "'");
 		}
-        
-        isLocked = true;
+
+		isLocked = true;
 	}
 
-	private void releaseLock() throws CloudsyncException{
-		
-		if( !isLocked ) return;
-		
+	private void releaseLock() throws CloudsyncException {
+
+		if (!isLocked)
+			return;
+
 		try {
 			Files.delete(lockFilePath);
 		} catch (IOException e) {
-			throw new CloudsyncException("Couldn't remove '"+lockFilePath.toString()+"'");
+			throw new CloudsyncException("Couldn't remove '" + lockFilePath.toString() + "'");
 		}
 
 		try {
@@ -169,7 +169,7 @@ public class Structure {
 
 		isLocked = false;
 	}
-	
+
 	private void writeStructureToCSVPrinter(final CSVPrinter out, final Item parentItem) throws IOException {
 
 		for (final Item child : parentItem.getChildren().values()) {
@@ -251,34 +251,36 @@ public class Structure {
 	}
 
 	public void list(String limitPattern) throws CloudsyncException {
-		list(limitPattern,root);
+		list(limitPattern, root);
 	}
 
-	private void list(final String limitPattern,final Item item) throws CloudsyncException {
+	private void list(final String limitPattern, final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 
 			String path = child.getPath();
-			if( limitPattern != null && !path.matches("^"+limitPattern+"$")) continue;
+			if (limitPattern != null && !path.matches("^" + limitPattern + "$"))
+				continue;
 
 			LOGGER.log(Level.INFO, path);
 
 			if (child.isType(ItemType.FOLDER)) {
-				list(limitPattern,child);
+				list(limitPattern, child);
 			}
 		}
 	}
 
 	public void restore(final boolean perform, final String limitPattern) throws CloudsyncException {
-		restore(perform, limitPattern,root);
+		restore(perform, limitPattern, root);
 	}
 
-	private void restore(final boolean perform, final String limitPattern,final Item item) throws CloudsyncException {
+	private void restore(final boolean perform, final String limitPattern, final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
-			
+
 			String path = child.getPath();
-			if( limitPattern != null && !path.matches("^"+limitPattern+"$")) continue;
+			if (limitPattern != null && !path.matches("^" + limitPattern + "$"))
+				continue;
 
 			localConnection.prepareUpload(this, child, duplicateFlag);
 			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
@@ -287,7 +289,7 @@ public class Structure {
 			}
 
 			if (child.isType(ItemType.FOLDER)) {
-				restore(perform,limitPattern,child);
+				restore(perform, limitPattern, child);
 			}
 		}
 	}
@@ -312,7 +314,7 @@ public class Structure {
 		final Status status = new Status();
 
 		backup(perform, root, status);
-		
+
 		boolean isChanged = isLocked;
 
 		releaseLock();
@@ -435,7 +437,7 @@ public class Structure {
 		return crypt.decryptData(stream);
 	}
 
-	public InputStream getLocalEncryptedBinaryStream(final Item item) throws IOException, CryptException {
+	public byte[] getLocalEncryptedBinary(final Item item) throws IOException, CryptException {
 		return crypt.getEncryptedBinary(localConnection.getFile(item), item);
 	}
 
