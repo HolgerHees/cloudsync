@@ -3,7 +3,7 @@ package cloudsync.connector;
 import java.io.InputStream;
 import java.util.List;
 
-import cloudsync.helper.CloudsyncException;
+import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
 
@@ -19,5 +19,5 @@ public interface RemoteConnector {
 
 	public InputStream get(Structure structure, Item item) throws CloudsyncException;
 
-	public void cleanHistory(Structure structure, int history) throws CloudsyncException;
+	public void cleanHistory(Structure structure) throws CloudsyncException;
 }

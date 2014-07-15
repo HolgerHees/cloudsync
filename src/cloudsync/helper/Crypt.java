@@ -34,6 +34,8 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePBEKeyEncryptionMethodGenerat
 import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.util.io.Streams;
 
+import cloudsync.exceptions.CloudsyncException;
+import cloudsync.exceptions.CryptException;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 

@@ -30,8 +30,8 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import cloudsync.helper.CloudsyncException;
-import cloudsync.helper.CryptException;
+import cloudsync.exceptions.CloudsyncException;
+import cloudsync.exceptions.CryptException;
 import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.DuplicateType;

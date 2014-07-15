@@ -10,10 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +25,8 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import cloudsync.helper.CloudsyncException;
-import cloudsync.helper.CryptException;
+import cloudsync.exceptions.CloudsyncException;
+import cloudsync.exceptions.CryptException;
 import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
@@ -34,6 +36,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.client.googleapis.media.MediaHttpUploader;
+import com.google.api.client.googleapis.media.MediaHttpUploader.UploadState;
 import com.google.api.client.googleapis.media.MediaHttpUploaderProgressListener;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
@@ -61,7 +64,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	final static String FOLDER = "application/vnd.google-apps.folder";
 	final static String FILE = "application/octet-stream";
 
-	final static int RETRY_COUNT = 2;
+	final static int RETRY_COUNT = 2; // max X retries after a ioexception
+	final static int CHUNK_COUNT = 4; // * 256kb
 
 	private GoogleTokenResponse clientToken;
 	private GoogleCredential credential;
@@ -75,8 +79,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private final String basePath;
 	private final String backupName;
 	private final String historyName;
+	private final Integer historyCount;
 
-	public RemoteGoogleDriveConnector(final String clientId, final String clientSecret, final String clientTokenPath, String basePath, final String backupName, final String historyName)
+	public RemoteGoogleDriveConnector(final String clientId, final String clientSecret, final String clientTokenPath, String basePath, final String backupName, final Integer history)
 			throws CloudsyncException {
 
 		cacheFiles = new HashMap<String, File>();
@@ -86,7 +91,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		this.basePath = basePath;
 		this.backupName = backupName;
-		this.historyName = historyName;
+		this.historyCount = history;
+		this.historyName = history > 0 ? backupName + " " + new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss").format(new Date()) : null;
 
 		final HttpTransport httpTransport = new NetHttpTransport();
 		final JsonFactory jsonFactory = new JacksonFactory();
@@ -311,7 +317,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void cleanHistory(final Structure structure, final int history) throws CloudsyncException {
+	public void cleanHistory(final Structure structure) throws CloudsyncException {
 
 		validateCredential(structure.getRootItem());
 
@@ -348,7 +354,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					continue;
 				}
 
-				if (count < history) {
+				if (count < historyCount) {
 					count++;
 				} else {
 					LOGGER.log(Level.FINE, "cleanup history folder '" + childDriveFolder.getTitle() + "'");
@@ -568,7 +574,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 			count++;
 
-			LOGGER.log(Level.WARNING, "'" + e.getMessage() + "'. " + count + ". retry");
+			LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - " + count + ". retry");
 
 			return count;
 		}
@@ -611,7 +617,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	private void prepareUploader(MediaHttpUploader uploader, byte[] data) {
 
-		int chunkSize = MediaHttpUploader.MINIMUM_CHUNK_SIZE * 4;
+		int chunkSize = MediaHttpUploader.MINIMUM_CHUNK_SIZE * CHUNK_COUNT;
 		int chunkCount = (int) Math.ceil(data.length / (double) chunkSize);
 
 		if (chunkCount > 1) {
@@ -628,10 +634,14 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		int length;
 		private DecimalFormat df;
+		private long lastBytes;
+		private long lastTime;
 
 		public RemoteGoogleDriveProgress(int length) {
 			this.length = length;
 			df = new DecimalFormat("00");
+			lastBytes = 0;
+			lastTime = System.currentTimeMillis();
 		}
 
 		@Override
@@ -645,7 +655,20 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			case INITIATION_STARTED:
 			case MEDIA_IN_PROGRESS:
 				double percent = mediaHttpUploader.getProgress() * 100;
-				LOGGER.log(Level.FINEST, "\r  " + df.format(Math.ceil(percent)) + "% (" + convertToKB(mediaHttpUploader.getNumBytesUploaded()) + " of " + convertToKB(length) + " kb)", true);
+
+				long currentTime = System.currentTimeMillis();
+
+				String msg = "\r  " + df.format(Math.ceil(percent)) + "% (" + convertToKB(mediaHttpUploader.getNumBytesUploaded()) + " of " + convertToKB(length) + " kb)";
+
+				if (mediaHttpUploader.getUploadState().equals(UploadState.MEDIA_IN_PROGRESS)) {
+
+					long speed = convertToKB((mediaHttpUploader.getNumBytesUploaded() - lastBytes) / ((currentTime - lastTime) / 1000.0));
+					msg += " - " + speed + " kb/s";
+				}
+				LOGGER.log(Level.FINEST, msg, true);
+
+				lastTime = currentTime;
+				lastBytes = mediaHttpUploader.getNumBytesUploaded();
 				break;
 			case MEDIA_COMPLETE:
 				// System.out.println("Upload is complete!");
@@ -654,7 +677,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			}
 		}
 
-		private long convertToKB(long size) {
+		private long convertToKB(double size) {
 
 			return (long) Math.ceil(size / 1024);
 		}

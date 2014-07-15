@@ -29,6 +29,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
+import cloudsync.exceptions.CloudsyncException;
+import cloudsync.exceptions.CryptException;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
@@ -49,7 +51,6 @@ public class Structure {
 	private final DuplicateType duplicateFlag;
 	private final LinkType followlinks;
 	private final boolean nopermissions;
-	private final int history;
 
 	private Path cacheFilePath;
 	private Path lockFilePath;
@@ -67,7 +68,7 @@ public class Structure {
 	}
 
 	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
-			final LinkType followlinks, final boolean nopermissions, final int history) {
+			final LinkType followlinks, final boolean nopermissions) {
 
 		this.name = name;
 		this.localConnection = localConnection;
@@ -76,7 +77,6 @@ public class Structure {
 		this.duplicateFlag = duplicateFlag;
 		this.followlinks = followlinks;
 		this.nopermissions = nopermissions;
-		this.history = history;
 
 		root = Item.getDummyRoot();
 		duplicates = new ArrayList<Item>();
@@ -158,11 +158,15 @@ public class Structure {
 		}
 
 		try {
-			LOGGER.log(Level.INFO, "write structure to cache file");
-			final PrintWriter out = new PrintWriter(cacheFilePath.toFile());
-			final CSVPrinter csvOut = new CSVPrinter(out, CSVFormat.EXCEL);
-			writeStructureToCSVPrinter(csvOut, root);
-			out.close();
+			
+			if( root.getChildren().size() > 0 ){
+			
+				LOGGER.log(Level.INFO, "write structure to cache file");
+				final PrintWriter out = new PrintWriter(cacheFilePath.toFile());
+				final CSVPrinter csvOut = new CSVPrinter(out, CSVFormat.EXCEL);
+				writeStructureToCSVPrinter(csvOut, root);
+				out.close();
+			}
 		} catch (final IOException e) {
 			throw new CloudsyncException("Can't write cache file on '" + cacheFilePath.toString() + "'", e);
 		}
@@ -212,7 +216,7 @@ public class Structure {
 			final Item existingChildItem = parentItem.getChildByName(childItem.getName());
 			if (existingChildItem != null) {
 
-				if (existingChildItem.getModifyTime().compareTo(childItem.getModifyTime()) < 0) {
+				if (childItem.getModifyTime() != null && (existingChildItem.getModifyTime() == null || existingChildItem.getModifyTime().compareTo(childItem.getModifyTime()) < 0)) {
 					parentItem.addChild(childItem);
 					duplicates.add(existingChildItem);
 				} else {
@@ -324,7 +328,7 @@ public class Structure {
 		releaseLock();
 
 		if (isChanged) {
-			remoteConnection.cleanHistory(this, history);
+			remoteConnection.cleanHistory(this);
 		}
 
 		final int total = status.create + status.update + status.skip;

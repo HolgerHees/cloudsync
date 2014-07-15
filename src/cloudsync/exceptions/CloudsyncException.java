@@ -1,4 +1,4 @@
-package cloudsync.helper;
+package cloudsync.exceptions;
 
 public class CloudsyncException extends Exception {
 

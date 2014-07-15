@@ -1,7 +1,5 @@
 package cloudsync.helper;
 
-import java.util.Properties;
-
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.model.Item;
@@ -15,9 +13,9 @@ public class Helper {
 		return text;
 	}
 	
-	public static String getPathProperty( Properties prop, String key ){
+	public static String getPathProperty( CmdOptions options, String key ){
 		
-		String path = prop.getProperty(key);
+		String path = options.getProperty(key);
 		if (path.startsWith("." + Item.SEPARATOR)) {
 			path = System.getProperty("user.dir") + path.substring(1);
 		}
