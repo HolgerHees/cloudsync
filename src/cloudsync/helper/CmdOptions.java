@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -30,7 +29,7 @@ public class CmdOptions {
 	private final Options options;
 	private final List<Option> positions;
 	private final String[] args;
-	
+
 	private Properties prop;
 	private String type;
 	private String path;
@@ -45,11 +44,11 @@ public class CmdOptions {
 	private boolean testrun;
 	private LinkType followlinks;
 	private DuplicateType duplicate;
-	
-	public CmdOptions( final String[] args ){
-		
+
+	public CmdOptions(final String[] args) {
+
 		this.args = args;
-		
+
 		positions = new ArrayList<Option>();
 
 		options = new Options();
@@ -99,22 +98,6 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("pattern");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
-		OptionBuilder.withLongOpt("include");
-		option = OptionBuilder.create();
-		options.addOption(option);
-		positions.add(option);
-
-		OptionBuilder.withArgName("pattern");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
-		OptionBuilder.withLongOpt("exclude");
-		option = OptionBuilder.create();
-		options.addOption(option);
-		positions.add(option);
-
 		String description = "How to handle symbolic links\n";
 		description += "<extern> - follow symbolic links if the target is outside from the current directory hierarchy - (default)\n";
 		description += "<all> - follow all symbolic links\n";
@@ -145,6 +128,22 @@ public class CmdOptions {
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
 		OptionBuilder.withLongOpt("history");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("pattern");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder.withLongOpt("include");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("pattern");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder.withLongOpt("exclude");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -187,9 +186,9 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 	}
-	
-	public void parse() throws UsageException, CloudsyncException{
-		
+
+	public void parse() throws UsageException, CloudsyncException {
+
 		final CommandLineParser parser = new GnuParser();
 		CommandLine cmd;
 		try {
@@ -198,7 +197,7 @@ public class CmdOptions {
 
 			throw new UsageException(e.getMessage());
 		}
-		
+
 		type = null;
 		path = null;
 		if ((path = cmd.getOptionValue("backup")) != null) {
@@ -228,10 +227,12 @@ public class CmdOptions {
 		forcestart = cmd.hasOption("forcestart");
 		testrun = cmd.hasOption("test");
 		String pattern = cmd.getOptionValue("include");
-		if( pattern != null ) includePatterns = pattern.contains("|") ? pattern.split("|") : new String[]{ pattern };
+		if (pattern != null)
+			includePatterns = pattern.contains("|") ? pattern.split("|") : new String[] { pattern };
 		pattern = cmd.getOptionValue("exclude");
-		if( pattern != null ) excludePatterns = pattern.contains("|") ? pattern.split("|") : new String[]{ pattern };
-		
+		if (pattern != null)
+			excludePatterns = pattern.contains("|") ? pattern.split("|") : new String[] { pattern };
+
 		logpath = cmd.getOptionValue("logfile");
 
 		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
@@ -252,7 +253,7 @@ public class CmdOptions {
 			}
 		}
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logpathValid ) {
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logpathValid) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
@@ -284,7 +285,7 @@ public class CmdOptions {
 			throw new UsageException(StringUtils.join(messages, '\n'));
 		}
 	}
-	
+
 	public void printHelp() {
 		final HelpFormatter formatter = new HelpFormatter();
 		formatter.setWidth(120);
@@ -326,7 +327,7 @@ public class CmdOptions {
 	public Integer getHistory() {
 		return history;
 	}
-	
+
 	public String getLogfilePath() {
 		return logpath;
 	}
@@ -342,7 +343,7 @@ public class CmdOptions {
 	public boolean getForceStart() {
 		return forcestart;
 	}
-	
+
 	public boolean isTestRun() {
 		return testrun;
 	}
@@ -354,9 +355,9 @@ public class CmdOptions {
 	public DuplicateType getDuplicate() {
 		return duplicate;
 	}
-	
-	public String getProperty( String key ){
-		
+
+	public String getProperty(String key) {
+
 		return prop.getProperty(key);
 	}
 }
