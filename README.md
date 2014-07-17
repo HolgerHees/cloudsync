@@ -26,7 +26,10 @@ usage: cloudsync <options>
  -l,--list                             List the contents of an backup
  -n,--name <name>                      Backup name of --backup, --restore, --clean or --list
     --config <path>                    Config file path. Default is './config/cloudsync.config'
-    --limit <pattern>                  Limit contents paths of --restore or --list to regex based ^<pattern>$
+    --include <pattern>                Include content of --backup, --restore and --list if the path matches the regex
+                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
+    --exclude <pattern>                Exclude content of --backup, --restore and --list if the path matches the regex
+                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
     --followlinks <extern|all|none>    How to handle symbolic links
                                        <extern> - follow symbolic links if the target is outside from the current
                                        directory hierarchy - (default)
@@ -41,5 +44,7 @@ usage: cloudsync <options>
     --nopermissions                    Don't restore permission, group and owner attributes
     --nocache                          Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                       Ignore a existing pid file. Should only be used after a previous crashed job.
+    --logfile <path>                   Log message to <path>
+    --test                             Start a 'test' run of --backup or --restore.
  -h,--help                             Show this help
 ```
