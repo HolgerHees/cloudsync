@@ -26,10 +26,6 @@ usage: cloudsync <options>
  -l,--list                             List the contents of an backup
  -n,--name <name>                      Backup name of --backup, --restore, --clean or --list
     --config <path>                    Config file path. Default is './config/cloudsync.config'
-    --include <pattern>                Include content of --backup, --restore and --list if the path matches the regex
-                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
-    --exclude <pattern>                Exclude content of --backup, --restore and --list if the path matches the regex
-                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
     --followlinks <extern|all|none>    How to handle symbolic links
                                        <extern> - follow symbolic links if the target is outside from the current
                                        directory hierarchy - (default)
@@ -41,6 +37,10 @@ usage: cloudsync <options>
                                        <rename> - extend the name with an autoincrement number
     --history <count>                  Before remove or update a file or folder move it to a history folder.
                                        Use a maximum of <count> history folders
+    --include <pattern>                Include content of --backup, --restore and --list if the path matches the regex
+                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
+    --exclude <pattern>                Exclude content of --backup, --restore and --list if the path matches the regex
+                                       based ^<pattern>$. Multiple patterns can be separated with an '|' character.
     --nopermissions                    Don't restore permission, group and owner attributes
     --nocache                          Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                       Ignore a existing pid file. Should only be used after a previous crashed job.
