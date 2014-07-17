@@ -53,6 +53,7 @@ import com.google.api.services.drive.Drive.Files.Insert;
 import com.google.api.services.drive.Drive.Files.Update;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.FileList;
 import com.google.api.services.drive.model.ParentReference;
 import com.google.api.services.drive.model.Property;
 
@@ -66,6 +67,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	final static int RETRY_COUNT = 2; // max X retries after a ioexception
 	final static int CHUNK_COUNT = 4; // * 256kb
+	final static int MAX_RESULTS = 1000;
 
 	private GoogleTokenResponse clientToken;
 	private GoogleCredential credential;
@@ -370,14 +372,24 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private List<File> _readFolder(final String id) throws IOException {
 
 		final List<File> child_items = new ArrayList<File>();
-
+		
 		final String q = "'" + id + "' in parents and trashed = false";
 		final Drive.Files.List request = service.files().list();
 		request.setQ(q);
-		final List<File> result = request.execute().getItems();
-		for (final File file : result) {
-			child_items.add(file);
-		}
+		request.setMaxResults(MAX_RESULTS);
+
+		do {
+
+			FileList files = request.execute();
+
+			final List<File> result = files.getItems();
+			for (final File file : result) {
+				child_items.add(file);
+			}
+			request.setPageToken(files.getNextPageToken());
+
+		} while( request.getPageToken() != null && request.getPageToken().length() > 0 );
+		
 		return child_items;
 	}
 
@@ -510,38 +522,48 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 					final Drive.Files.List request = service.files().list();
 					request.setQ(q);
-					final List<File> result = request.execute().getItems();
+					request.setMaxResults(MAX_RESULTS);
 
-					// array('q' => q))
-
-					File _parentItem;
-
-					if (result.size() == 0) {
-
-						final File folder = new File();
-						folder.setTitle(name);
-						folder.setMimeType(FOLDER);
-						final ParentReference parentReference = new ParentReference();
-						parentReference.setId(parentItem.getId());
-						folder.setParents(Arrays.asList(parentReference));
-						_parentItem = service.files().insert(folder).execute();
-						if (_parentItem == null) {
-							throw new CloudsyncException("Could not create folder '" + name + "'");
+					do {
+						
+						FileList files = request.execute();
+						
+						final List<File> result = files.getItems();
+	
+						// array('q' => q))
+	
+						File _parentItem;
+	
+						if (result.size() == 0) {
+	
+							final File folder = new File();
+							folder.setTitle(name);
+							folder.setMimeType(FOLDER);
+							final ParentReference parentReference = new ParentReference();
+							parentReference.setId(parentItem.getId());
+							folder.setParents(Arrays.asList(parentReference));
+							_parentItem = service.files().insert(folder).execute();
+							if (_parentItem == null) {
+								throw new CloudsyncException("Could not create folder '" + name + "'");
+							}
+						} else if (result.size() == 1) {
+							_parentItem = result.get(0);
+						} else {
+	
+							throw new CloudsyncException("base path '" + path + "' not unique");
 						}
-					} else if (result.size() == 1) {
-						_parentItem = result.get(0);
-					} else {
-
-						throw new CloudsyncException("base path '" + path + "' not unique");
+	
+						if (!_parentItem.getMimeType().equals(FOLDER)) {
+							throw new CloudsyncException("No folder found at '" + path + "'");
+						}
+	
+						_addToCache(_parentItem, parentItem);
+	
+						parentItem = _parentItem;
+						
+						request.setPageToken(files.getNextPageToken());
 					}
-
-					if (!_parentItem.getMimeType().equals(FOLDER)) {
-						throw new CloudsyncException("No folder found at '" + path + "'");
-					}
-
-					_addToCache(_parentItem, parentItem);
-
-					parentItem = _parentItem;
+					while( request.getPageToken() != null && request.getPageToken().length() > 0 );
 				}
 			}
 			return parentItem;

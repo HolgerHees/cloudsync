@@ -1,6 +1,8 @@
 package cloudsync;
 
+import java.io.IOException;
 import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -14,8 +16,10 @@ import cloudsync.exceptions.UsageException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Crypt;
 import cloudsync.helper.Helper;
-import cloudsync.helper.LogfileHandler;
 import cloudsync.helper.Structure;
+import cloudsync.logging.LogconsoleHandler;
+import cloudsync.logging.LogfileFormatter;
+import cloudsync.logging.LogfileHandler;
 
 public class Cloudsync {
 
@@ -29,18 +33,31 @@ public class Cloudsync {
 
 		final Logger logger = Logger.getLogger("cloudsync");
 		logger.setLevel(Level.ALL);
-		final ConsoleHandler handler = new LogfileHandler();
+		final ConsoleHandler handler = new LogconsoleHandler();
 		handler.setLevel(Level.ALL);
 		logger.addHandler(handler);
 		logger.setUseParentHandlers(false);
-
-		// FileHandler fh = new FileHandler(".cloudsync.log");
-		// logger.addHandler(fh);
 	}
 
 	private void start() throws CloudsyncException, UsageException {
 
 		options.parse();
+		
+		String logpath = options.getLogfilePath();
+		if( logpath != null ){
+			
+			final Logger logger = Logger.getLogger("cloudsync");
+			FileHandler fh;
+			try {
+				fh = new LogfileHandler(logpath);
+				fh.setFormatter(new LogfileFormatter());
+				logger.addHandler(fh);
+			} catch (SecurityException e) {
+				throw new CloudsyncException("Unexpected error on logfile creation",e);
+			} catch (IOException e) {
+				throw new CloudsyncException("Unexpected error on logfile creation",e);
+			}
+		}
 
 		String name = options.getName();
 
@@ -51,22 +68,29 @@ public class Cloudsync {
 		Structure structure = null;
 		try {
 
+			final long start = System.currentTimeMillis();
+
+			String type = options.getType();
+			String[] includePatterns = options.getIncludePatterns();
+			if( includePatterns != null ){
+				LOGGER.log(Level.FINEST,"use include pattern: " + "[^"+StringUtils.join(includePatterns,"$] | [$")+"$]" );
+			}
+			String[] excludePatterns = options.getExcludePatterns();
+			if( excludePatterns != null ){
+				LOGGER.log(Level.FINEST,"use exclude pattern: " + "[^"+StringUtils.join(excludePatterns,"$] | [$")+"$]" );
+			}
+
 			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getProperty("PASSPHRASE")), options.getDuplicate(), options.getFollowLinks(),
 					options.getNoPermission());
 			structure.init(Helper.getPathProperty(options, "CACHE_FILE"), Helper.getPathProperty(options, "LOCK_FILE"), Helper.getPathProperty(options, "PID_FILE"), options.getNoCache(),
 					options.getForceStart());
 
-			final long start = System.currentTimeMillis();
-
-			String type = options.getType();
-			String limitPattern = options.getLimitPattern();
-
 			if (type.equals("backup")) {
-				structure.backup(true);
+				structure.backup(!options.isTestRun(),includePatterns,excludePatterns);
 			} else if (type.equals("restore")) {
-				structure.restore(true, limitPattern);
+				structure.restore(!options.isTestRun(),includePatterns,excludePatterns);
 			} else if (type.equals("list")) {
-				structure.list(limitPattern);
+				structure.list(includePatterns,excludePatterns);
 			} else if (type.equals("clean")) {
 				structure.clean();
 			}
@@ -92,11 +116,11 @@ public class Cloudsync {
 			cloudsync.start();
 		} catch (UsageException e) {
 			if (!StringUtils.isEmpty(e.getMessage())) {
-				LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
+				LOGGER.log(Level.INFO, "error: " + e.getMessage() + "\n");
 			}
 			cloudsync.options.printHelp();
 		} catch (CloudsyncException e) {
-			LOGGER.log(Level.INFO, "\nerror: " + e.getMessage() + "\n");
+			LOGGER.log(Level.INFO, "error: " + e.getMessage() + "\n");
 			if (e.getCause() != null) {
 				e.printStackTrace();
 			}

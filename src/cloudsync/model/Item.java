@@ -123,7 +123,6 @@ public class Item {
 
 	public void addChild(final Item child) {
 		children.put(child.name, child);
-		child.setParent(this);
 	}
 
 	public void removeChild(final Item child) {
@@ -242,6 +241,11 @@ public class Item {
 
 	public Integer getPermissions() {
 		return permissions;
+	}
+
+	public Long getFilesize() {
+
+		return filesize;
 	}
 
 	public FileTime getCreationTime() {

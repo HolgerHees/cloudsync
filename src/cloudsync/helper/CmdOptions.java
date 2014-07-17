@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -35,10 +36,13 @@ public class CmdOptions {
 	private String path;
 	private String name;
 	private Integer history;
-	private String limitPattern;
+	private String[] includePatterns;
+	private String[] excludePatterns;
+	private String logpath;
 	private boolean nopermissions;
 	private boolean nocache;
 	private boolean forcestart;
+	private boolean testrun;
 	private LinkType followlinks;
 	private DuplicateType duplicate;
 	
@@ -97,8 +101,16 @@ public class CmdOptions {
 
 		OptionBuilder.withArgName("pattern");
 		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Limit contents paths of --restore or --list to regex based ^<pattern>$");
-		OptionBuilder.withLongOpt("limit");
+		OptionBuilder.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder.withLongOpt("include");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("pattern");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder.withLongOpt("exclude");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -155,6 +167,20 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
+		OptionBuilder.withArgName("path");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Log message to <path>");
+		OptionBuilder.withLongOpt("logfile");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Start a 'test' run of --backup or --restore.");
+		OptionBuilder.withLongOpt("test");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
 		OptionBuilder.withDescription("Show this help");
 		OptionBuilder.withLongOpt("help");
 		option = OptionBuilder.create("h");
@@ -200,10 +226,17 @@ public class CmdOptions {
 		nopermissions = cmd.hasOption("nopermissions");
 		nocache = cmd.hasOption("nocache");
 		forcestart = cmd.hasOption("forcestart");
-		limitPattern = cmd.getOptionValue("limit");
+		testrun = cmd.hasOption("test");
+		String pattern = cmd.getOptionValue("include");
+		if( pattern != null ) includePatterns = pattern.contains("|") ? pattern.split("|") : new String[]{ pattern };
+		pattern = cmd.getOptionValue("exclude");
+		if( pattern != null ) excludePatterns = pattern.contains("|") ? pattern.split("|") : new String[]{ pattern };
+		
+		logpath = cmd.getOptionValue("logfile");
 
 		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
 		boolean configValid = config != null && new File(config).isFile();
+		boolean logpathValid = logpath == null || new File(logpath).getParentFile().isDirectory();
 
 		prop = new Properties();
 		try {
@@ -219,7 +252,7 @@ public class CmdOptions {
 			}
 		}
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid) {
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logpathValid ) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
@@ -243,6 +276,9 @@ public class CmdOptions {
 					messages.add(" Missing --config <path>");
 				} else if (!configValid) {
 					messages.add(" --config <path> not valid");
+				}
+				if (!logpathValid) {
+					messages.add(" --logfile <path> not valid");
 				}
 			}
 			throw new UsageException(StringUtils.join(messages, '\n'));
@@ -279,14 +315,22 @@ public class CmdOptions {
 		return name;
 	}
 
-	public String getLimitPattern() {
-		return limitPattern;
+	public String[] getIncludePatterns() {
+		return includePatterns;
+	}
+
+	public String[] getExcludePatterns() {
+		return excludePatterns;
 	}
 
 	public Integer getHistory() {
 		return history;
 	}
 	
+	public String getLogfilePath() {
+		return logpath;
+	}
+
 	public boolean getNoPermission() {
 		return nopermissions;
 	}
@@ -298,6 +342,11 @@ public class CmdOptions {
 	public boolean getForceStart() {
 		return forcestart;
 	}
+	
+	public boolean isTestRun() {
+		return testrun;
+	}
+
 	public LinkType getFollowLinks() {
 		return followlinks;
 	}

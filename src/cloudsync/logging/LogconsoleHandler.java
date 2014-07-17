@@ -1,11 +1,10 @@
-package cloudsync.helper;
+package cloudsync.logging;
 
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.LogRecord;
 
-public class LogfileHandler extends ConsoleHandler {
+public class LogconsoleHandler extends ConsoleHandler {
 
 	private boolean keepCurrentLine;
 	final static SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
@@ -17,7 +16,7 @@ public class LogfileHandler extends ConsoleHandler {
 				keepCurrentLine = false;
 				System.out.print("\r");
 			}
-			System.out.println(sdf.format(new Date()) + " " + record.getMessage());
+			System.out.println(sdf.format(record.getMillis()) + " " + record.getMessage());
 
 		} else {
 

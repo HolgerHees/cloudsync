@@ -104,7 +104,7 @@ public class Structure {
 		}
 
 		if (Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS)) {
-			LOGGER.log(Level.WARNING, "Found an inconsistent cache file state. Possibly previous job has crashed. Force a cache file rebuild.");
+			LOGGER.log(Level.WARNING, "Found an inconsistent cache file state. Possibly previous job has crashed or duplicate files was detected. Force a cache file rebuild.");
 			nocache = true;
 		}
 
@@ -199,7 +199,9 @@ public class Structure {
 				final String parentPath = childPath.length() == item.getName().length() ? "" : StringUtils.removeEnd(FilenameUtils.getPath(childPath), Item.SEPARATOR);
 				mapping.put(childPath, item);
 				// System.out.println(parentPath+":"+item.getName());
-				mapping.get(parentPath).addChild(item);
+				Item parent = mapping.get(parentPath);
+				item.setParent(parent);
+				parent.addChild(item);
 			}
 		} catch (final IOException e) {
 
@@ -213,14 +215,14 @@ public class Structure {
 
 		for (final Item childItem : childItems) {
 
+			childItem.setParent(parentItem);
+
 			final Item existingChildItem = parentItem.getChildByName(childItem.getName());
 			if (existingChildItem != null) {
-
 				if (childItem.getModifyTime() != null && (existingChildItem.getModifyTime() == null || existingChildItem.getModifyTime().compareTo(childItem.getModifyTime()) < 0)) {
 					parentItem.addChild(childItem);
 					duplicates.add(existingChildItem);
 				} else {
-					childItem.setParent(parentItem);
 					duplicates.add(childItem);
 				}
 			} else {
@@ -231,6 +233,45 @@ public class Structure {
 				readRemoteStructure(childItem);
 			}
 		}
+	}
+	
+	private void checkDuplications() throws CloudsyncException{
+		
+		if (duplicates.size() > 0) {
+
+			String message = "found " + duplicates.size() + " duplicate item" + ( duplicates.size() == 1 ? "" : "s" ) + ":\n\n";
+			final List<Item> list = new ArrayList<Item>();
+			for (final Item item : duplicates) {
+				list.addAll(_flatRecursiveChildren(item));
+			}
+			for (final Item item : list) {
+				message += "  " + item.getRemoteIdentifier() + " - " + item.getPath() + "\n";
+			}
+			message += "\n  try to run with '--clean=<path>'";
+
+			throw new CloudsyncException(message);
+		}
+	}
+	
+	private boolean checkPattern( String path, String[] includePatterns, String[] excludePatterns ){
+		
+		if (includePatterns != null){
+			for( String includePattern : includePatterns ){
+				if( !path.matches("^" + includePattern + "$")){
+					return false;
+				}
+			}
+		}
+		
+		if (excludePatterns != null){
+			for( String excludePattern : excludePatterns ){
+				if( path.matches("^" + excludePattern + "$")){
+					return false;
+				}
+			}
+		}
+		
+		return true;
 	}
 
 	public void clean() throws CloudsyncException {
@@ -258,37 +299,43 @@ public class Structure {
 		}
 	}
 
-	public void list(String limitPattern) throws CloudsyncException {
-		list(limitPattern, root);
+	public void list(String[] includePatterns, String[] excludePatterns ) throws CloudsyncException {
+		
+		checkDuplications();
+
+		list(includePatterns, excludePatterns, root);
 	}
 
-	private void list(final String limitPattern, final Item item) throws CloudsyncException {
+	private void list(String[] includePatterns, String[] excludePatterns, final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 
 			String path = child.getPath();
-			if (limitPattern != null && !path.matches("^" + limitPattern + "$"))
-				continue;
+			
+			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
 
 			LOGGER.log(Level.INFO, path);
 
 			if (child.isType(ItemType.FOLDER)) {
-				list(limitPattern, child);
+				list(includePatterns, excludePatterns, child);
 			}
 		}
 	}
 
-	public void restore(final boolean perform, final String limitPattern) throws CloudsyncException {
-		restore(perform, limitPattern, root);
+	public void restore(final boolean perform, String[] includePatterns, String[] excludePatterns) throws CloudsyncException {
+		
+		checkDuplications();
+
+		restore(perform, includePatterns, excludePatterns, root);
 	}
 
-	private void restore(final boolean perform, final String limitPattern, final Item item) throws CloudsyncException {
+	private void restore(final boolean perform, String[] includePatterns, String[] excludePatterns, final Item item) throws CloudsyncException {
 
 		for (final Item child : item.getChildren().values()) {
 
 			String path = child.getPath();
-			if (limitPattern != null && !path.matches("^" + limitPattern + "$"))
-				continue;
+
+			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
 
 			localConnection.prepareUpload(this, child, duplicateFlag);
 			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
@@ -297,31 +344,18 @@ public class Structure {
 			}
 
 			if (child.isType(ItemType.FOLDER)) {
-				restore(perform, limitPattern, child);
+				restore(perform, includePatterns, excludePatterns, child);
 			}
 		}
 	}
 
-	public void backup(final boolean perform) throws CloudsyncException {
+	public void backup(final boolean perform, String[] includePatterns, String[] excludePatterns) throws CloudsyncException {
 
-		if (duplicates.size() > 0) {
-
-			String message = "find " + duplicates.size() + " duplicate items:\n\n";
-			final List<Item> list = new ArrayList<Item>();
-			for (final Item item : duplicates) {
-				list.addAll(_flatRecursiveChildren(item));
-			}
-			for (final Item item : list) {
-				message += "  " + item.getRemoteIdentifier() + " - " + item.getPath() + "\n";
-			}
-			message += "\ntry to run with '--clean=<path>'";
-
-			throw new CloudsyncException(message);
-		}
+		checkDuplications();
 
 		final Status status = new Status();
 
-		backup(perform, root, status);
+		backup(perform, includePatterns, excludePatterns, root, status);
 
 		boolean isChanged = isLocked;
 
@@ -339,20 +373,26 @@ public class Structure {
 		LOGGER.log(Level.INFO, "skipped items: " + (new Integer(status.skip).toString()));
 	}
 
-	private void backup(final boolean perform, final Item remoteParentItem, final Status status) throws CloudsyncException {
+	private void backup(final boolean perform, String[] includePatterns, String[] excludePatterns, final Item remoteParentItem, final Status status) throws CloudsyncException {
 
 		final Map<String, Item> unusedRemoteChildItems = remoteParentItem.getChildren();
 
 		final List<Item> localChildItems = localConnection.readFolder(this, remoteParentItem, followlinks);
 
 		for (final Item localChildItem : localChildItems) {
+			
+			localChildItem.setParent(remoteParentItem);
+			
+			String path = localChildItem.getPath();
+			
+			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
 
 			Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
 
 			if (remoteChildItem == null) {
 				remoteChildItem = localChildItem;
 				remoteParentItem.addChild(remoteChildItem);
-				LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
+				LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
 				if (perform) {
 					createLock();
 					remoteConnection.upload(this, remoteChildItem);
@@ -366,7 +406,7 @@ public class Structure {
 				// this.structure[key].getModifyTime()+"\n";
 
 				if (localChildItem.isTypeChanged(remoteChildItem)) {
-					LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
+					LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + path + "'");
 					if (perform) {
 						createLock();
 						remoteConnection.remove(this, remoteChildItem);
@@ -375,7 +415,7 @@ public class Structure {
 
 					remoteChildItem = localChildItem;
 					remoteParentItem.addChild(remoteChildItem);
-					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
+					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
 					if (perform) {
 						createLock();
 						remoteConnection.upload(this, localChildItem);
@@ -386,7 +426,7 @@ public class Structure {
 				else if (localChildItem.isMetadataChanged(remoteChildItem)) {
 					final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
 					remoteChildItem.update(localChildItem);
-					LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + remoteChildItem.getPath() + "'");
+					LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + path + "'");
 					if (perform) {
 						createLock();
 						remoteConnection.update(this, remoteChildItem, isFiledataChanged);
@@ -400,7 +440,7 @@ public class Structure {
 			unusedRemoteChildItems.remove(remoteChildItem.getName());
 
 			if (remoteChildItem.isType(ItemType.FOLDER)) {
-				backup(perform, remoteChildItem, status);
+				backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
 			}
 		}
 
