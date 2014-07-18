@@ -28,6 +28,8 @@ to restore a backup into '/restore' call:
 
 ```./cloudsync --restore /restore --name dataBackup```
 
+for a complete list of options see below
+
 ```
 usage: cloudsync <options>
  -b,--backup <path>                    Create or refresh backup of <path>
