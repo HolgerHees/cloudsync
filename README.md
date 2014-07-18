@@ -20,9 +20,13 @@ The filecompare is done by comparing the archived metadata. It uses a local cach
 
 To use it copy 'config/cloudsync.config.default' to 'config/cloudsync.config' and Set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET.
 
-to create a backup of '/data' call: ```./cloudsync --backup /data --name dataBackup```
+to create a backup of '/data' call:
+```./cloudsync --backup /data --name dataBackup```
 
-to restore a backup into '/restore' call: ```./cloudsync --restore /restore --name dataBackup```
+to restore a backup into '/restore' call:
+```./cloudsync --restore /restore --name dataBackup```
+
+during the first start the Google client token is generated and permanently stored.
 
 ```
 usage: cloudsync <options>
