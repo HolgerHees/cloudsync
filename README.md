@@ -32,9 +32,9 @@ usage: cloudsync <options>
                                        <all> - follow all symbolic links
                                        <none> - don't follow any symbolic links
     --duplicate <stop|update|rename>   Behavior on existing files
-                                       <stop> - stop immediately - (default)
+                                       <stop> - stop immediately - (default for --backup and --restore)
                                        <update> - replace file
-                                       <rename> - extend the name with an autoincrement number
+                                       <rename> - extend the name with an autoincrement number (default for --clean)
     --history <count>                  Before remove or update a file or folder move it to a history folder.
                                        Use a maximum of <count> history folders
     --include <pattern>                Include content of --backup, --restore and --list if the path matches the regex
