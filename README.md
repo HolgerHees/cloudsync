@@ -18,7 +18,7 @@ The filecompare is done by comparing the archived metadata. It uses a local cach
 
 **java >= 7 and Java Cryptography Extension (JCE)**
 
-To use it copy 'config/cloudsync.config.default' to 'config/cloudsync.config' and Set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET.
+To use it, copy 'config/cloudsync.config.default' to 'config/cloudsync.config' and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET.
 
 to create a backup of '/data' call:
 
