@@ -22,7 +22,7 @@ To use it copy 'config/cloudsync.config.default' to 'config/cloudsync.config' an
 
 to create a backup of '/data' call: ```./cloudsync --backup /data --name dataBackup```
 
-to restore a backup into '/restore' call: ```./cloudsync --backup /restore --name dataBackup```
+to restore a backup into '/restore' call: ```./cloudsync --restore /restore --name dataBackup```
 
 ```
 usage: cloudsync <options>
