@@ -16,7 +16,7 @@ public class LogconsoleHandler extends ConsoleHandler {
 				keepCurrentLine = false;
 				System.out.print("\r");
 			}
-			System.out.println(sdf.format(record.getMillis()) + " " + record.getMessage());
+			System.out.println(LogfileFormatter.formatRecord(record, sdf));
 
 		} else {
 

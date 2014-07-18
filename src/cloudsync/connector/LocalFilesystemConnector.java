@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -18,10 +19,8 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -85,13 +84,13 @@ public class LocalFilesystemConnector {
 		if (exists(Paths.get(path))) {
 
 			int i = 0;
-			while (exists(Paths.get(path + "+" + i))) {
+			while (exists(Paths.get(path + "." + i))) {
 				i++;
 			}
 
-			path += "+" + i;
+			path += "." + i;
 
-			item.setName(FilenameUtils.getBaseName(path));
+			item.setName(FilenameUtils.getName(path));
 		}
 	}
 
@@ -123,7 +122,7 @@ public class LocalFilesystemConnector {
 		if (exists(path)) {
 
 			if (!duplicateFlag.equals(DuplicateType.UPDATE)) {
-				throw new CloudsyncException("Item already '" + item.getPath() + "' exists. Try to specify another '--duplicate' behavior.");
+				throw new CloudsyncException("Item '" + item.getPath() + "' already exists. Try to specify another '--duplicate' behavior.");
 			}
 
 			if ((!item.isType(ItemType.FOLDER) || !isDir(path))) {
@@ -182,6 +181,9 @@ public class LocalFilesystemConnector {
 					final byte[] data = structure.decryptData(encryptedStream);
 					final FileOutputStream fos = new FileOutputStream(path.toFile());
 					try {
+						if (item.getFilesize() != data.length) {
+							LOGGER.log(Level.WARNING, "restored filesize differs from the original filesize");
+						}
 						fos.write(data);
 					} finally {
 						fos.close();
@@ -252,76 +254,82 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public List<Item> readFolder(final Structure structure, final Item item, final LinkType followlinks) throws CloudsyncException {
+	public File[] readFolder(final Item item) throws CloudsyncException {
 
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
 
 		// System.out.println(currentPath);
 
-		final List<Item> child_items = new ArrayList<Item>();
-
 		final File folder = new File(currentPath);
 
-		for (final File _file : folder.listFiles()) {
+		if (!Files.exists(folder.toPath(), LinkOption.NOFOLLOW_LINKS)) {
 
-			Path path = _file.toPath();
-
-			try {
-
-				ItemType type = ItemType.UNKNOWN;
-				if (Files.isSymbolicLink(path)) {
-
-					String target;
-					try {
-						target = Files.readSymbolicLink(path).toString();
-						final String firstChar = target.substring(0, 1);
-						if (!firstChar.equals(Item.SEPARATOR)) {
-							if (!firstChar.equals(".")) {
-								target = "." + Item.SEPARATOR + target;
-							}
-							target = path.toString() + Item.SEPARATOR + target;
-						}
-						target = Paths.get(target).toFile().getCanonicalPath();
-					} catch (final IOException e) {
-						throw new CloudsyncException("Can't read '" + item.getTypeName() + "' on '" + currentPath + "'", e);
-					}
-
-					if (!followlinks.equals(LinkType.NONE) && followlinks.equals(LinkType.EXTERNAL) && !target.startsWith(localPath)) {
-
-						final Path targetPath = Paths.get(target);
-						if (Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS)) {
-							path = targetPath;
-						}
-					}
-				}
-
-				final PosixFileAttributes attr = Files.readAttributes(path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-				final Long filesize = attr.size();
-				final FileTime creationTime = attr.creationTime();
-				final FileTime modifyTime = attr.lastModifiedTime();
-				final FileTime accessTime = attr.lastAccessTime();
-				final String group = attr.group().getName();
-				final String user = attr.owner().getName();
-				final Integer permissions = fromPermissions(attr.permissions());
-
-				if (attr.isDirectory()) {
-					type = ItemType.FOLDER;
-				} else if (attr.isRegularFile()) {
-					type = ItemType.FILE;
-				} else if (attr.isSymbolicLink()) {
-					type = ItemType.LINK;
-				} else {
-					type = ItemType.UNKNOWN;
-				}
-
-				child_items.add(new Item(_file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions));
-			} catch (final IOException e) {
-
-				throw new CloudsyncException("Can't read attributes of '" + path.toString() + "'", e);
-			}
+			LOGGER.log(Level.WARNING, "skip '" + currentPath + "'. does not exists anymore.");
+			return new File[] {};
 		}
 
-		return child_items;
+		return folder.listFiles();
+	}
+
+	public Item getItem(File file, final LinkType followlinks) throws CloudsyncException, NoSuchFileException {
+
+		try {
+
+			Path path = file.toPath();
+
+			ItemType type = ItemType.UNKNOWN;
+
+			if (Files.isSymbolicLink(path)) {
+
+				String target;
+				target = Files.readSymbolicLink(path).toString();
+				final String firstChar = target.substring(0, 1);
+				if (!firstChar.equals(Item.SEPARATOR)) {
+					if (!firstChar.equals(".")) {
+						target = "." + Item.SEPARATOR + target;
+					}
+					target = path.toString() + Item.SEPARATOR + target;
+				}
+				target = Paths.get(target).toFile().getCanonicalPath();
+
+				if (!followlinks.equals(LinkType.NONE) && followlinks.equals(LinkType.EXTERNAL) && !target.startsWith(localPath)) {
+
+					final Path targetPath = Paths.get(target);
+					if (Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS)) {
+						path = targetPath;
+					}
+				}
+			}
+
+			final PosixFileAttributes attr = Files.readAttributes(path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			final Long filesize = attr.size();
+			final FileTime creationTime = attr.creationTime();
+			final FileTime modifyTime = attr.lastModifiedTime();
+			final FileTime accessTime = attr.lastAccessTime();
+			final String group = attr.group().getName();
+			final String user = attr.owner().getName();
+			final Integer permissions = fromPermissions(attr.permissions());
+
+			if (attr.isDirectory()) {
+				type = ItemType.FOLDER;
+			} else if (attr.isRegularFile()) {
+				type = ItemType.FILE;
+			} else if (attr.isSymbolicLink()) {
+				type = ItemType.LINK;
+			} else {
+				type = ItemType.UNKNOWN;
+			}
+
+			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions);
+
+		} catch (final NoSuchFileException e) {
+
+			throw e;
+
+		} catch (final IOException e) {
+
+			throw new CloudsyncException("Can't read attributes of '" + file.getAbsolutePath() + "'", e);
+		}
 	}
 
 	private boolean exists(final Path path) {

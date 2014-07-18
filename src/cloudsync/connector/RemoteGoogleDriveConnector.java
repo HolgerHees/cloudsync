@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
@@ -65,9 +66,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	final static String FOLDER = "application/vnd.google-apps.folder";
 	final static String FILE = "application/octet-stream";
 
+	final static int MIN_RETRY_BREAK = 10000;
 	final static int RETRY_COUNT = 6; // => readtimeout of 6 x 20 sec, 2 min
 	final static int CHUNK_COUNT = 4; // * 256kb
 	final static int MAX_RESULTS = 1000;
+	final static long MIN_TOKEN_REFRESH_TIMEOUT = 600;
 
 	private GoogleTokenResponse clientToken;
 	private GoogleCredential credential;
@@ -82,6 +85,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private final String backupName;
 	private final String historyName;
 	private final Integer historyCount;
+	private long lastValidate = 0;
 
 	public RemoteGoogleDriveConnector(final String clientId, final String clientSecret, final String clientTokenPath, String basePath, final String backupName, final Integer history)
 			throws CloudsyncException {
@@ -147,186 +151,206 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void upload(final Structure structure, final Item item) throws CloudsyncException {
-		upload(structure, item, 0);
-	}
+	public void upload(final Structure structure, final Item item) throws CloudsyncException, NoSuchFileException {
 
-	private void upload(final Structure structure, final Item item, int count) throws CloudsyncException {
+		initService(structure);
 
-		validateCredential(structure.getRootItem());
+		String title = null;
+		File driveItem;
+		int retryCount = 0;
+		do {
+			try {
+				refreshCredential();
 
-		try {
-			final File parentDriveItem = _getDriveItem(item.getParent());
-			final ParentReference parentReference = new ParentReference();
-			parentReference.setId(parentDriveItem.getId());
-			File driveItem = new File();
-			driveItem.setTitle(structure.encryptText(item.getName()));
-			driveItem.setParents(Arrays.asList(parentReference));
-			final byte[] data = _prepareDriveItem(driveItem, item, structure, true);
-			if (data == null) {
-				driveItem = service.files().insert(driveItem).execute();
-			} else {
-				final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
-				params.setLength(data.length);
-				Insert inserter = service.files().insert(driveItem, params);
-				MediaHttpUploader uploader = inserter.getMediaHttpUploader();
-				prepareUploader(uploader, data);
-				driveItem = inserter.execute();
+				title = structure.encryptText(item.getName());
+				final File parentDriveItem = _getDriveItem(item.getParent());
+				final ParentReference parentReference = new ParentReference();
+				parentReference.setId(parentDriveItem.getId());
+				driveItem = new File();
+				driveItem.setTitle(title);
+				driveItem.setParents(Arrays.asList(parentReference));
+				final byte[] data = _prepareDriveItem(driveItem, item, structure, true);
+				if (data == null) {
+					driveItem = service.files().insert(driveItem).execute();
+				} else {
+					final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
+					params.setLength(data.length);
+					Insert inserter = service.files().insert(driveItem, params);
+					MediaHttpUploader uploader = inserter.getMediaHttpUploader();
+					prepareUploader(uploader, data);
+					driveItem = inserter.execute();
+				}
+				if (driveItem == null) {
+					throw new CloudsyncException("Could not create item '" + item.getPath() + "'");
+				}
+				_addToCache(driveItem, null);
+				item.setRemoteIdentifier(driveItem.getId());
+				return;
+			} catch (final CryptException e) {
+				throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
+			} catch (final NoSuchFileException e) {
+				throw e;
+			} catch (final IOException e) {
+				if (title != null) {
+					driveItem = _searchDriveItem(item.getParent(), title);
+					if (driveItem != null) {
+
+						LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - item allready uploaded. try to update now.");
+
+						item.setRemoteIdentifier(driveItem.getId());
+						update(structure, item, true);
+						return;
+					}
+				}
+				retryCount = validateException("remote upload", item, e, retryCount);
 			}
-			if (driveItem == null) {
-				throw new CloudsyncException("Could not create item '" + item.getPath() + "'");
-			}
-			_addToCache(driveItem, null);
-			item.setRemoteIdentifier(driveItem.getId());
-		} catch (final CryptException e) {
-
-			throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " title of '" + item.getPath() + "'", e);
-		} catch (final IOException e) {
-
-			count = validateException("remote upload", item, e, count);
-
-			upload(structure, item, count);
-		}
+		} while (true);
 	}
 
 	@Override
-	public void update(final Structure structure, final Item item, final boolean with_filedata) throws CloudsyncException {
-		update(structure, item, with_filedata, 0);
-	}
+	public void update(final Structure structure, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
-	public void update(final Structure structure, final Item item, final boolean with_filedata, int count) throws CloudsyncException {
+		initService(structure);
 
-		validateCredential(structure.getRootItem());
+		int retryCount = 0;
+		do {
+			try {
+				refreshCredential();
 
-		try {
-			if (item.isType(ItemType.FILE)) {
+				if (item.isType(ItemType.FILE)) {
 
-				final File _parentDriveItem = _getHistoryFolder(item);
-				if (_parentDriveItem != null) {
+					final File _parentDriveItem = _getHistoryFolder(item);
+					if (_parentDriveItem != null) {
 
-					final File copyOfdriveItem = new File();
-					final ParentReference _parentReference = new ParentReference();
-					_parentReference.setId(_parentDriveItem.getId());
-					copyOfdriveItem.setParents(Arrays.asList(_parentReference));
-					// copyOfdriveItem.setTitle(driveItem.getTitle());
-					// copyOfdriveItem.setMimeType(driveItem.getMimeType());
-					// copyOfdriveItem.setProperties(driveItem.getProperties());
-					final File _copyOfDriveItem = service.files().copy(item.getRemoteIdentifier(), copyOfdriveItem).execute();
-					if (_copyOfDriveItem == null) {
-						throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
+						final File copyOfdriveItem = new File();
+						final ParentReference _parentReference = new ParentReference();
+						_parentReference.setId(_parentDriveItem.getId());
+						copyOfdriveItem.setParents(Arrays.asList(_parentReference));
+						// copyOfdriveItem.setTitle(driveItem.getTitle());
+						// copyOfdriveItem.setMimeType(driveItem.getMimeType());
+						// copyOfdriveItem.setProperties(driveItem.getProperties());
+						final File _copyOfDriveItem = service.files().copy(item.getRemoteIdentifier(), copyOfdriveItem).execute();
+						if (_copyOfDriveItem == null) {
+							throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
+						}
 					}
 				}
+				File driveItem = new File();
+				final byte[] data = _prepareDriveItem(driveItem, item, structure, with_filedata);
+				if (data == null) {
+					driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
+				} else {
+					final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
+					params.setLength(data.length);
+					Update updater = service.files().update(item.getRemoteIdentifier(), driveItem, params);
+					MediaHttpUploader uploader = updater.getMediaHttpUploader();
+					prepareUploader(uploader, data);
+					driveItem = updater.execute();
+				}
+				if (driveItem == null) {
+					throw new CloudsyncException("Could not update item '" + item.getPath() + "'");
+				} else if (driveItem.getLabels().getTrashed()) {
+					throw new CloudsyncException("Remote item '" + item.getPath() + "' [" + driveItem.getId() + "] is trashed\ntry to run with --nocache");
+				}
+				_addToCache(driveItem, null);
+				return;
+			} catch (final CryptException e) {
+				throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
+			} catch (final NoSuchFileException e) {
+				throw e;
+			} catch (final IOException e) {
+				retryCount = validateException("remote update", item, e, retryCount);
 			}
-			File driveItem = new File();
-			final byte[] data = _prepareDriveItem(driveItem, item, structure, with_filedata);
-			if (data == null) {
-				driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
-			} else {
-				final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
-				params.setLength(data.length);
-				Update updater = service.files().update(item.getRemoteIdentifier(), driveItem, params);
-				MediaHttpUploader uploader = updater.getMediaHttpUploader();
-				prepareUploader(uploader, data);
-				driveItem = updater.execute();
-			}
-			if (driveItem == null) {
-				throw new CloudsyncException("Could not update item '" + item.getPath() + "'");
-			} else if (driveItem.getLabels().getTrashed()) {
-				throw new CloudsyncException("Remote item '" + item.getPath() + "' [" + driveItem.getId() + "] is trashed\ntry to run with --nocache");
-			}
-			_addToCache(driveItem, null);
-		} catch (final IOException e) {
-			count = validateException("remote update", item, e, count);
-			update(structure, item, with_filedata, count);
-		}
+		} while (true);
 	}
 
 	@Override
 	public void remove(final Structure structure, final Item item) throws CloudsyncException {
-		remove(structure, item, 0);
-	}
 
-	public void remove(final Structure structure, final Item item, int count) throws CloudsyncException {
+		initService(structure);
 
-		validateCredential(structure.getRootItem());
+		int retryCount = 0;
+		do {
+			try {
+				refreshCredential();
 
-		try {
-			final File _parentDriveItem = _getHistoryFolder(item);
-			if (_parentDriveItem != null) {
+				final File _parentDriveItem = _getHistoryFolder(item);
+				if (_parentDriveItem != null) {
 
-				final ParentReference parentReference = new ParentReference();
-				parentReference.setId(_parentDriveItem.getId());
-				File driveItem = new File();
-				driveItem.setParents(Arrays.asList(parentReference));
-				driveItem = service.files().patch(item.getRemoteIdentifier(), driveItem).execute();
-				if (driveItem == null) {
-					throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
+					final ParentReference parentReference = new ParentReference();
+					parentReference.setId(_parentDriveItem.getId());
+					File driveItem = new File();
+					driveItem.setParents(Arrays.asList(parentReference));
+					driveItem = service.files().patch(item.getRemoteIdentifier(), driveItem).execute();
+					if (driveItem == null) {
+						throw new CloudsyncException("Could not make a history snapshot of item '" + item.getPath() + "'");
+					}
+				} else {
+					service.files().delete(item.getRemoteIdentifier()).execute();
 				}
-			} else {
-				service.files().delete(item.getRemoteIdentifier()).execute();
+				_removeFromCache(item.getRemoteIdentifier());
+				return;
+			} catch (final IOException e) {
+				retryCount = validateException("remote remove", item, e, retryCount);
 			}
-
-			_removeFromCache(item.getRemoteIdentifier());
-
-		} catch (final IOException e) {
-			count = validateException("remote remove", item, e, count);
-			remove(structure, item, count);
-		}
+		} while (true);
 	}
 
 	@Override
 	public InputStream get(final Structure structure, final Item item) throws CloudsyncException {
-		return get(structure, item, 0);
-	}
 
-	public InputStream get(final Structure structure, final Item item, int count) throws CloudsyncException {
+		initService(structure);
 
-		validateCredential(structure.getRootItem());
+		int retryCount = 0;
+		do {
+			try {
+				refreshCredential();
 
-		try {
-			final File driveItem = _getDriveItem(item);
-			final String downloadUrl = driveItem.getDownloadUrl();
-			final HttpResponse resp = service.getRequestFactory().buildGetRequest(new GenericUrl(downloadUrl)).execute();
-			return resp.getContent();
-		} catch (final IOException e) {
-			count = validateException("remote get", item, e, count);
-			return get(structure, item, count);
-		}
+				final File driveItem = _getDriveItem(item);
+				final String downloadUrl = driveItem.getDownloadUrl();
+				final HttpResponse resp = service.getRequestFactory().buildGetRequest(new GenericUrl(downloadUrl)).execute();
+				return resp.getContent();
+			} catch (final IOException e) {
+				retryCount = validateException("remote get", item, e, retryCount);
+			}
+		} while (true);
 	}
 
 	@Override
 	public List<Item> readFolder(final Structure structure, final Item parentItem) throws CloudsyncException {
-		return readFolder(structure, parentItem, 0);
-	}
 
-	public List<Item> readFolder(final Structure structure, final Item parentItem, int count) throws CloudsyncException {
+		initService(structure);
 
-		validateCredential(structure.getRootItem());
+		int retryCount = 0;
+		do {
+			try {
+				refreshCredential();
 
-		try {
-			final List<Item> child_items = new ArrayList<Item>();
-			final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
-			for (final File child : childDriveItems) {
-				child_items.add(_prepareBackupItem(child, structure));
+				final List<Item> child_items = new ArrayList<Item>();
+				final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
+				for (final File child : childDriveItems) {
+					child_items.add(_prepareBackupItem(child, structure));
+				}
+				return child_items;
+			} catch (final CryptException e) {
+				throw new CloudsyncException("Can't decrypt child c", e);
+			} catch (final IOException e) {
+				retryCount = validateException("remote fetch", parentItem, e, retryCount);
 			}
-			return child_items;
-		} catch (final CryptException e) {
-			throw new CloudsyncException("Can't decrypt child c", e);
-		} catch (final IOException e) {
-			count = validateException("remote fetch", parentItem, e, count);
-			return readFolder(structure, parentItem, count);
-		}
+		} while (true);
 	}
 
 	@Override
 	public void cleanHistory(final Structure structure) throws CloudsyncException {
 
-		validateCredential(structure.getRootItem());
+		initService(structure);
 
 		final File backupDriveFolder = _getBackupFolder();
 		final File parentDriveItem = _getDriveFolder(basePath);
 
 		try {
+			refreshCredential();
+
 			final List<File> child_items = _readFolder(parentDriveItem.getId());
 
 			Collections.sort(child_items, new Comparator<File>() {
@@ -393,41 +417,33 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return child_items;
 	}
 
-	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws CloudsyncException {
+	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws IOException, CryptException {
 
-		try {
-			final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(), ":"));
+		final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(), ":"));
 
-			final List<Property> properties = new ArrayList<Property>();
+		final List<Property> properties = new ArrayList<Property>();
 
-			final int length = metadata.length();
-			int partCounter = 0;
-			// max 118 bytes (key+value)
-			for (int i = 0; i < length; i += 100, partCounter++) {
-				final String part = metadata.substring(i, Math.min(length, i + 100));
-				final Property property = new Property();
-				property.setKey("metadata" + partCounter);
-				property.setValue(part);
-				property.setVisibility("PRIVATE");
-				properties.add(property);
-			}
-			driveItem.setProperties(properties);
-
-			driveItem.setMimeType(item.isType(ItemType.FOLDER) ? FOLDER : FILE);
-
-			byte[] data = null;
-			if (with_filedata) {
-
-				data = structure.getLocalEncryptedBinary(item);
-			}
-			return data;
-		} catch (final CryptException e) {
-
-			throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
-		} catch (final IOException e) {
-
-			throw new CloudsyncException("Unexpected error on " + item.getTypeName() + " prepare", e);
+		final int length = metadata.length();
+		int partCounter = 0;
+		// max 118 bytes (key+value)
+		for (int i = 0; i < length; i += 100, partCounter++) {
+			final String part = metadata.substring(i, Math.min(length, i + 100));
+			final Property property = new Property();
+			property.setKey("metadata" + partCounter);
+			property.setValue(part);
+			property.setVisibility("PRIVATE");
+			properties.add(property);
 		}
+		driveItem.setProperties(properties);
+
+		driveItem.setMimeType(item.isType(ItemType.FOLDER) ? FOLDER : FILE);
+
+		byte[] data = null;
+		if (with_filedata) {
+
+			data = structure.getLocalEncryptedBinary(item);
+		}
+		return data;
 	}
 
 	private Item _prepareBackupItem(final File driveItem, final Structure structure) throws CryptException, IOException {
@@ -451,6 +467,22 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		}
 
 		return Item.fromMetadata(structure.decryptText(driveItem.getTitle()), driveItem.getId(), driveItem.getMimeType().equals(FOLDER), metadata);
+	}
+
+	private File _searchDriveItem(final Item parentItem, String title) throws CloudsyncException {
+
+		int retryCount = 0;
+		do {
+			try {
+				final String q = "title='" + title + "' and '" + parentItem.getRemoteIdentifier() + "' in parents and trashed = false";
+				final Drive.Files.List request = service.files().list();
+				request.setQ(q);
+				final List<File> result = request.execute().getItems();
+				return result.size() == 0 ? null : result.get(0);
+			} catch (final IOException e) {
+				retryCount = validateException("remote search", parentItem, e, retryCount);
+			}
+		} while (true);
 	}
 
 	private File _getDriveItem(final Item item) throws CloudsyncException {
@@ -593,6 +625,19 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			// Caused by: java.io.IOException: insufficient data written
 			// VALIDATE: owncloud/Fotos/2008.10.04-09 Zypern/img_2875.jpg
 
+			long currentValidate = System.currentTimeMillis();
+			long current_retry_break = (currentValidate - lastValidate);
+			if (lastValidate > 0 && current_retry_break < MIN_RETRY_BREAK) {
+
+				try {
+					LOGGER.log(Level.WARNING, "ioexception: wait for " + (MIN_RETRY_BREAK - current_retry_break) + " ms");
+					Thread.sleep(MIN_RETRY_BREAK - current_retry_break);
+				} catch (InterruptedException ex) {
+				}
+			}
+
+			lastValidate = currentValidate;
+
 			count++;
 
 			LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - " + count + ". retry");
@@ -603,36 +648,36 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		throw new CloudsyncException("Unexpected error during " + name + " of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 	}
 
-	private void validateCredential(final Item rootItem) throws CloudsyncException {
+	public void initService(Structure structure) throws CloudsyncException {
 
-		if (service == null) {
-			final HttpTransport httpTransport = new NetHttpTransport();
-			final JsonFactory jsonFactory = new JacksonFactory();
-			service = new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName("Backup").build();
+		if (service != null)
+			return;
+
+		final HttpTransport httpTransport = new NetHttpTransport();
+		final JsonFactory jsonFactory = new JacksonFactory();
+		service = new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName("Backup").build();
+		credential.setExpiresInSeconds(MIN_TOKEN_REFRESH_TIMEOUT);
+		try {
 			refreshCredential();
-			rootItem.setRemoteIdentifier(_getBackupFolder().getId());
-		} else if (credential.getExpiresInSeconds() < 600) {
-			refreshCredential();
+		} catch (IOException e) {
+			throw new CloudsyncException("couldn't refresh google drive token");
 		}
-
-		// LOGGER.log(Level.FINEST, " token expires in " +
-		// credential.getExpiresInSeconds() + " seconds");
+		structure.getRootItem().setRemoteIdentifier(_getBackupFolder().getId());
 	}
 
-	private void refreshCredential() throws CloudsyncException {
+	private void refreshCredential() throws IOException {
 
-		try {
-			if (credential.refreshToken()) {
-				clientToken.setAccessToken(credential.getAccessToken());
-				clientToken.setExpiresInSeconds(credential.getExpiresInSeconds());
-				clientToken.setRefreshToken(credential.getRefreshToken());
+		if (credential.getExpiresInSeconds() > MIN_TOKEN_REFRESH_TIMEOUT)
+			return;
 
-				final JsonFactory jsonFactory = new JacksonFactory();
-				storeClientToken(jsonFactory);
-				LOGGER.log(Level.INFO, "refreshed client token stored in '" + clientTokenPath + "'");
-			}
-		} catch (IOException e) {
-			throw new CloudsyncException("Can't refresh google client token", e);
+		if (credential.refreshToken()) {
+			clientToken.setAccessToken(credential.getAccessToken());
+			clientToken.setExpiresInSeconds(credential.getExpiresInSeconds());
+			clientToken.setRefreshToken(credential.getRefreshToken());
+
+			final JsonFactory jsonFactory = new JacksonFactory();
+			storeClientToken(jsonFactory);
+			LOGGER.log(Level.INFO, "refreshed client token stored in '" + clientTokenPath + "'");
 		}
 	}
 
@@ -644,7 +689,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		if (chunkCount > 1) {
 			uploader.setDirectUploadEnabled(false);
 			uploader.setChunkSize(chunkSize);
-			uploader.setProgressListener(new RemoteGoogleDriveProgress(data.length));
+			uploader.setProgressListener(new RemoteGoogleDriveProgress(this, data.length));
 		} else {
 
 			uploader.setDirectUploadEnabled(true);
@@ -657,9 +702,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		private DecimalFormat df;
 		private long lastBytes;
 		private long lastTime;
+		private RemoteGoogleDriveConnector connector;
 
-		public RemoteGoogleDriveProgress(int length) {
+		public RemoteGoogleDriveProgress(RemoteGoogleDriveConnector connector, int length) {
 			this.length = length;
+			this.connector = connector;
 			df = new DecimalFormat("00");
 			lastBytes = 0;
 			lastTime = System.currentTimeMillis();
@@ -675,6 +722,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				break;
 			case INITIATION_STARTED:
 			case MEDIA_IN_PROGRESS:
+
+				this.connector.refreshCredential();
+
 				double percent = mediaHttpUploader.getProgress() * 100;
 
 				long currentTime = System.currentTimeMillis();

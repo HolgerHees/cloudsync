@@ -23,6 +23,7 @@ import cloudsync.exceptions.UsageException;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.LinkType;
+import cloudsync.model.SyncType;
 
 public class CmdOptions {
 
@@ -31,7 +32,7 @@ public class CmdOptions {
 	private final String[] args;
 
 	private Properties prop;
-	private String type;
+	private SyncType type;
 	private String path;
 	private String name;
 	private Integer history;
@@ -55,7 +56,7 @@ public class CmdOptions {
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription("Create or refresh backup of <path>");
-		OptionBuilder.withLongOpt("backup");
+		OptionBuilder.withLongOpt(SyncType.BACKUP.getName());
 		Option option = OptionBuilder.create("b");
 		options.addOption(option);
 		positions.add(option);
@@ -63,7 +64,7 @@ public class CmdOptions {
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription("Restore a backup into <path>");
-		OptionBuilder.withLongOpt("restore");
+		OptionBuilder.withLongOpt(SyncType.RESTORE.getName());
 		option = OptionBuilder.create("r");
 		options.addOption(option);
 		positions.add(option);
@@ -71,13 +72,13 @@ public class CmdOptions {
 		OptionBuilder.withArgName("path");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription("Repair 'cloudsync*.cache' file and put leftover file into <path>");
-		OptionBuilder.withLongOpt("clean");
+		OptionBuilder.withLongOpt(SyncType.CLEAN.getName());
 		option = OptionBuilder.create("c");
 		options.addOption(option);
 		positions.add(option);
 
 		OptionBuilder.withDescription("List the contents of an backup");
-		OptionBuilder.withLongOpt("list");
+		OptionBuilder.withLongOpt(SyncType.LIST.getName());
 		option = OptionBuilder.create("l");
 		options.addOption(option);
 		positions.add(option);
@@ -111,9 +112,9 @@ public class CmdOptions {
 		positions.add(option);
 
 		description = "Behavior on existing files\n";
-		description += "<stop> - stop immediately - (default)\n";
+		description += "<stop> - stop immediately - (default for --backup and --restore)\n";
 		description += "<update> - replace file\n";
-		description += "<rename> - extend the name with an autoincrement number";
+		description += "<rename> - extend the name with an autoincrement number (default for --clean)";
 		OptionBuilder.withArgName("stop|update|rename");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
@@ -200,20 +201,20 @@ public class CmdOptions {
 
 		type = null;
 		path = null;
-		if ((path = cmd.getOptionValue("backup")) != null) {
-			type = "backup";
-		} else if ((path = cmd.getOptionValue("restore")) != null) {
-			type = "restore";
-		} else if ((path = cmd.getOptionValue("clean")) != null) {
-			type = "clean";
-		} else if (cmd.hasOption("list")) {
-			type = "list";
+		if ((path = cmd.getOptionValue(SyncType.BACKUP.getName())) != null) {
+			type = SyncType.BACKUP;
+		} else if ((path = cmd.getOptionValue(SyncType.RESTORE.getName())) != null) {
+			type = SyncType.RESTORE;
+		} else if ((path = cmd.getOptionValue(SyncType.CLEAN.getName())) != null) {
+			type = SyncType.CLEAN;
+		} else if (cmd.hasOption(SyncType.LIST.getName())) {
+			type = SyncType.LIST;
 		}
 
 		name = cmd.getOptionValue("name");
 
 		followlinks = LinkType.fromName(cmd.getOptionValue("followlinks", LinkType.EXTERNAL.getName()));
-		duplicate = DuplicateType.fromName(cmd.getOptionValue("duplicate", DuplicateType.STOP.getName()));
+		duplicate = DuplicateType.fromName(cmd.getOptionValue("duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName()));
 
 		String config = cmd.getOptionValue("config", "." + Item.SEPARATOR + "config" + Item.SEPARATOR + "cloudsync.config");
 		if (config.startsWith("." + Item.SEPARATOR)) {
@@ -223,7 +224,7 @@ public class CmdOptions {
 		history = (type != null && type.equals("backup")) ? Integer.parseInt(cmd.getOptionValue("history", "0")) : 0;
 
 		nopermissions = cmd.hasOption("nopermissions");
-		nocache = cmd.hasOption("nocache");
+		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
 		testrun = cmd.hasOption("test");
 		String pattern = cmd.getOptionValue("include");
@@ -308,7 +309,7 @@ public class CmdOptions {
 		return path;
 	}
 
-	public String getType() {
+	public SyncType getType() {
 		return type;
 	}
 

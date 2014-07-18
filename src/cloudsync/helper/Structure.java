@@ -1,5 +1,6 @@
 package cloudsync.helper;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +10,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -377,70 +379,89 @@ public class Structure {
 
 		final Map<String, Item> unusedRemoteChildItems = remoteParentItem.getChildren();
 
-		final List<Item> localChildItems = localConnection.readFolder(this, remoteParentItem, followlinks);
-
-		for (final Item localChildItem : localChildItems) {
+		for (File localChildFile : localConnection.readFolder(remoteParentItem)) {
 			
-			localChildItem.setParent(remoteParentItem);
-			
-			String path = localChildItem.getPath();
+			String path = localChildFile.getAbsolutePath();
 			
 			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
 
-			Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
+			try{
 
-			if (remoteChildItem == null) {
-				remoteChildItem = localChildItem;
-				remoteParentItem.addChild(remoteChildItem);
-				LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
-				if (perform) {
-					createLock();
-					remoteConnection.upload(this, remoteChildItem);
-				}
-				status.create++;
-			} else {
+				Item localChildItem = localConnection.getItem(localChildFile, followlinks);
+				localChildItem.setParent(remoteParentItem);
+				
+				Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
 
-				// echo item.getFileSize() +" "+
-				// this.structure[key].getFileSize()+"\n";
-				// echo item.getModifyTime() +" "+
-				// this.structure[key].getModifyTime()+"\n";
-
-				if (localChildItem.isTypeChanged(remoteChildItem)) {
-					LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + path + "'");
-					if (perform) {
-						createLock();
-						remoteConnection.remove(this, remoteChildItem);
-					}
-					status.remove++;
-
+				if (remoteChildItem == null) {
 					remoteChildItem = localChildItem;
-					remoteParentItem.addChild(remoteChildItem);
 					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
 					if (perform) {
 						createLock();
-						remoteConnection.upload(this, localChildItem);
+						remoteConnection.upload(this, remoteChildItem);
 					}
+					remoteParentItem.addChild(remoteChildItem);
 					status.create++;
-				}
-				// check filesize and modify time
-				else if (localChildItem.isMetadataChanged(remoteChildItem)) {
-					final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
-					remoteChildItem.update(localChildItem);
-					LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + path + "'");
-					if (perform) {
-						createLock();
-						remoteConnection.update(this, remoteChildItem, isFiledataChanged);
-					}
-					status.update++;
 				} else {
-					status.skip++;
+	
+					// echo item.getFileSize() +" "+
+					// this.structure[key].getFileSize()+"\n";
+					// echo item.getModifyTime() +" "+
+					// this.structure[key].getModifyTime()+"\n";
+	
+					if (localChildItem.isTypeChanged(remoteChildItem)) {
+						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + path + "'");
+						if (perform) {
+							createLock();
+							remoteConnection.remove(this, remoteChildItem);
+						}
+						status.remove++;
+	
+						remoteChildItem = localChildItem;
+						LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
+						if (perform) {
+							createLock();
+							remoteConnection.upload(this, remoteChildItem);
+						}
+						remoteParentItem.addChild(remoteChildItem);
+						status.create++;
+					}
+					// check filesize and modify time
+					else if (localChildItem.isMetadataChanged(remoteChildItem)) {
+						final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
+						remoteChildItem.update(localChildItem);
+						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + path + "'");
+						if (perform) {
+							createLock();
+							remoteConnection.update(this, remoteChildItem, isFiledataChanged);
+						}
+						status.update++;
+					} else {
+						status.skip++;
+					}
+				}
+				
+				try{
+					// refresh Metadata
+					Item _localChildItem = localConnection.getItem(localChildFile, followlinks);
+					if( _localChildItem.isMetadataChanged(localChildItem) ){
+						
+						LOGGER.log(Level.WARNING,localChildItem.getTypeName()+" '"+path+"' was locally changed during remote update." );
+					}
+				}
+				catch( NoSuchFileException e ){
+					
+					LOGGER.log(Level.WARNING,localChildItem.getTypeName()+" '"+path+"' was locally removed during remote update." );
+				}
+				
+				unusedRemoteChildItems.remove(remoteChildItem.getName());
+	
+				if (remoteChildItem.isType(ItemType.FOLDER)) {
+					backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
 				}
 			}
-
-			unusedRemoteChildItems.remove(remoteChildItem.getName());
-
-			if (remoteChildItem.isType(ItemType.FOLDER)) {
-				backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
+			catch( NoSuchFileException e ){
+					
+				LOGGER.log(Level.WARNING,"skip '"+path+"'. does not exists anymore." );
 			}
 		}
 

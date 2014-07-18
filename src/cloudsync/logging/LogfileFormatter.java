@@ -7,11 +7,15 @@ import java.util.logging.LogRecord;
 public class LogfileFormatter extends Formatter {
 
 	final static SimpleDateFormat sdf = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
-	
+
 	@Override
 	public String format(LogRecord record) {
-		
-		return sdf.format(record.getMillis()) + " " + record.getMessage() + "\n";
+
+		return formatRecord(record, sdf) + "\n";
 	}
 
+	public static String formatRecord(LogRecord record, SimpleDateFormat sdf) {
+
+		return "[" + sdf.format(record.getMillis()) + "] - " + record.getLevel().getName() + " - " + record.getMessage();
+	}
 }
