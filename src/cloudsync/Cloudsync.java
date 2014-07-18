@@ -57,7 +57,6 @@ public class Cloudsync {
 				Path logfilePath = Paths.get(logpath);
 				if (Files.exists(logfilePath)) {
 					Path preservedPath = Paths.get(logpath + ".1");
-					LOGGER.log(Level.FINE, "preserve old logfile '" + preservedPath.toString() + "'");
 					Files.move(logfilePath, preservedPath, StandardCopyOption.REPLACE_EXISTING);
 				}
 				fh = new LogfileHandler(logpath);

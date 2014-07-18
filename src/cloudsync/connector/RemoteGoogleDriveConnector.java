@@ -116,8 +116,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			if (StringUtils.isEmpty(clientTokenAsJson)) {
 
 				final String url = flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URL).build();
-				System.out.println("Please open the following URL in your browser then type the authorization code:");
-				System.out.println("  " + url);
+				System.out.println("Please open the following URL in your browser, copy the authorization code and enter below.");
+				System.out.println("\n" + url + "\n");
 				final BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 				final String code = br.readLine();
 
@@ -126,7 +126,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				credential.setFromTokenResponse(clientToken);
 
 				storeClientToken(jsonFactory);
-				LOGGER.log(Level.INFO, "\nclient token stored in '" + this.clientTokenPath + "'\n");
+				LOGGER.log(Level.INFO, "client token stored in '" + this.clientTokenPath + "'");
 			} else {
 
 				final JsonParser parser = jsonFactory.createJsonParser(clientTokenAsJson);
