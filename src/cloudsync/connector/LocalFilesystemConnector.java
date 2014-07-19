@@ -30,7 +30,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.exceptions.CryptException;
 import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.DuplicateType;
@@ -166,9 +165,6 @@ public class LocalFilesystemConnector {
 					final String link = new String(structure.decryptData(encryptedStream));
 					Files.createSymbolicLink(path, Paths.get(link));
 
-				} catch (final CryptException e) {
-
-					throw new CloudsyncException("Can't decrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
 				} catch (final IOException e) {
 
 					throw new CloudsyncException("Unexpected error during local update of " + item.getTypeName() + " '" + item.getPath() + "'", e);
@@ -188,9 +184,6 @@ public class LocalFilesystemConnector {
 					} finally {
 						fos.close();
 					}
-				} catch (final CryptException e) {
-
-					throw new CloudsyncException("Can't decrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
 				} catch (final IOException e) {
 
 					throw new CloudsyncException("Unexpected error during local update of " + item.getTypeName() + " '" + item.getPath() + "'", e);
@@ -320,7 +313,7 @@ public class LocalFilesystemConnector {
 				type = ItemType.UNKNOWN;
 			}
 
-			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions);
+			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions, null, null);
 
 		} catch (final NoSuchFileException e) {
 

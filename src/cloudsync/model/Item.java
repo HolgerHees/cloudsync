@@ -29,8 +29,11 @@ public class Item {
 
 	private Map<String, Item> children;
 
+	private Long remoteFilesize;
+	private FileTime remoteCreationtime;
+
 	public Item(final String name, final String remoteIdentifier, final ItemType type, final Long filesize, final FileTime creationtime, final FileTime modifytime, final FileTime accesstime,
-			final String group, final String user, final Integer permissions) {
+			final String group, final String user, final Integer permissions, Long remoteFilesize, FileTime remoteCreationtime) {
 
 		this.name = name;
 		this.remoteIdentifier = remoteIdentifier;
@@ -42,6 +45,8 @@ public class Item {
 		this.group = group;
 		this.user = user;
 		this.permissions = permissions;
+		this.remoteFilesize = remoteFilesize;
+		this.remoteCreationtime = remoteCreationtime;
 
 		if (this.type.equals(ItemType.FOLDER)) {
 			children = new HashMap<String, Item>();
@@ -49,7 +54,7 @@ public class Item {
 	}
 
 	public static Item getDummyRoot() {
-		return new Item("", "", ItemType.FOLDER, null, null, null, null, null, null, null);
+		return new Item("", "", ItemType.FOLDER, null, null, null, null, null, null, null, null, null);
 	}
 
 	public static Item fromCSV(final CSVRecord values) {
@@ -65,7 +70,7 @@ public class Item {
 		final String user = StringUtils.isEmpty(values.get(8)) ? null : values.get(8);
 		final Integer permissions = StringUtils.isEmpty(values.get(9)) ? null : Integer.parseInt(values.get(9));
 
-		return new Item(name, remoteIndentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
+		return new Item(name, remoteIndentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions, null, null);
 	}
 
 	public String[] toArray() {
@@ -76,7 +81,7 @@ public class Item {
 				permissions == null ? null : permissions.toString() };
 	}
 
-	public static Item fromMetadata(final String name, final String remoteIdentifier, final boolean isFolder, final String[] metadata) {
+	public static Item fromMetadata(final String name, final String remoteIdentifier, final boolean isFolder, final String[] metadata, Long remoteFilesize, FileTime remoteCreationtime) {
 
 		ItemType type;
 		Long filesize = null;
@@ -99,7 +104,8 @@ public class Item {
 			type = isFolder ? ItemType.FOLDER : ItemType.FILE;
 		}
 
-		return new Item(name, remoteIdentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
+		Item item = new Item(name, remoteIdentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions, remoteFilesize, remoteCreationtime);
+		return item;
 	}
 
 	public String[] getMetadata() {
@@ -156,9 +162,9 @@ public class Item {
 		if (isChanged(modifytime, item.modifytime)) {
 			return true;
 		}
-		/*if (isChanged(accesstime, item.accesstime)) {
-			return true;
-		}*/
+		/*
+		 * if (isChanged(accesstime, item.accesstime)) { return true; }
+		 */
 		return false;
 	}
 
@@ -173,9 +179,9 @@ public class Item {
 		if (isChanged(modifytime, item.modifytime)) {
 			return true;
 		}
-		/*if (isChanged(accesstime, item.accesstime)) {
-			return true;
-		}*/
+		/*
+		 * if (isChanged(accesstime, item.accesstime)) { return true; }
+		 */
 		if (isChanged(group, item.group)) {
 			return true;
 		}
@@ -261,5 +267,15 @@ public class Item {
 	public FileTime getAccessTime() {
 
 		return accesstime;
+	}
+
+	public Long getRemoteFilesize() {
+
+		return remoteFilesize;
+	}
+
+	public FileTime getRemoteCreationTime() {
+
+		return remoteCreationtime;
 	}
 }

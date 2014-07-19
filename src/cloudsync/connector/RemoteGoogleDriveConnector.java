@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,7 +28,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.exceptions.CryptException;
 import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
@@ -66,6 +66,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	final static String FOLDER = "application/vnd.google-apps.folder";
 	final static String FILE = "application/octet-stream";
 
+	final static int MIN_SEARCH_BREAK = 5000;
 	final static int MIN_RETRY_BREAK = 10000;
 	final static int RETRY_COUNT = 6; // => readtimeout of 6 x 20 sec, 2 min
 	final static int CHUNK_COUNT = 4; // * 256kb
@@ -155,14 +156,12 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		initService(structure);
 
-		String title = null;
+		String title = structure.encryptText(item.getName());
 		File driveItem;
 		int retryCount = 0;
 		do {
 			try {
 				refreshCredential();
-
-				title = structure.encryptText(item.getName());
 				final File parentDriveItem = _getDriveItem(item.getParent());
 				final ParentReference parentReference = new ParentReference();
 				parentReference.setId(parentDriveItem.getId());
@@ -186,12 +185,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				_addToCache(driveItem, null);
 				item.setRemoteIdentifier(driveItem.getId());
 				return;
-			} catch (final CryptException e) {
-				throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
 			} catch (final NoSuchFileException e) {
 				throw e;
 			} catch (final IOException e) {
 				if (title != null) {
+					sleep(MIN_SEARCH_BREAK);
 					driveItem = _searchDriveItem(item.getParent(), title);
 					if (driveItem != null) {
 
@@ -254,8 +252,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				}
 				_addToCache(driveItem, null);
 				return;
-			} catch (final CryptException e) {
-				throw new CloudsyncException("Can't encrypt " + item.getTypeName() + " '" + item.getPath() + "'", e);
 			} catch (final NoSuchFileException e) {
 				throw e;
 			} catch (final IOException e) {
@@ -332,8 +328,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					child_items.add(_prepareBackupItem(child, structure));
 				}
 				return child_items;
-			} catch (final CryptException e) {
-				throw new CloudsyncException("Can't decrypt child c", e);
 			} catch (final IOException e) {
 				retryCount = validateException("remote fetch", parentItem, e, retryCount);
 			}
@@ -417,7 +411,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return child_items;
 	}
 
-	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws IOException, CryptException {
+	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
 		final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(), ":"));
 
@@ -446,7 +440,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return data;
 	}
 
-	private Item _prepareBackupItem(final File driveItem, final Structure structure) throws CryptException, IOException {
+	private Item _prepareBackupItem(final File driveItem, final Structure structure) throws CloudsyncException {
 
 		final List<String> parts = new ArrayList<String>();
 
@@ -466,7 +460,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			metadata = structure.decryptText(StringUtils.join(parts.toArray())).split(":", -1);
 		}
 
-		return Item.fromMetadata(structure.decryptText(driveItem.getTitle()), driveItem.getId(), driveItem.getMimeType().equals(FOLDER), metadata);
+		return Item.fromMetadata(structure.decryptText(driveItem.getTitle()), driveItem.getId(), driveItem.getMimeType().equals(FOLDER), metadata, driveItem.getFileSize(),
+				FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
 	}
 
 	private File _searchDriveItem(final Item parentItem, String title) throws CloudsyncException {
@@ -619,6 +614,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		}
 	}
 
+	private void sleep(long duration) {
+
+		try {
+			LOGGER.log(Level.WARNING, "ioexception: wait for " + duration + " ms");
+			Thread.sleep(duration);
+		} catch (InterruptedException ex) {
+		}
+	}
+
 	private int validateException(String name, Item item, IOException e, int count) throws CloudsyncException {
 
 		if (count < RETRY_COUNT) {
@@ -628,12 +632,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			long currentValidate = System.currentTimeMillis();
 			long current_retry_break = (currentValidate - lastValidate);
 			if (lastValidate > 0 && current_retry_break < MIN_RETRY_BREAK) {
-
-				try {
-					LOGGER.log(Level.WARNING, "ioexception: wait for " + (MIN_RETRY_BREAK - current_retry_break) + " ms");
-					Thread.sleep(MIN_RETRY_BREAK - current_retry_break);
-				} catch (InterruptedException ex) {
-				}
+				sleep(MIN_RETRY_BREAK - current_retry_break);
 			}
 
 			lastValidate = currentValidate;

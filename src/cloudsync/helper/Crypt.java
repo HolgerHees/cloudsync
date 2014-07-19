@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
@@ -22,7 +23,6 @@ import org.bouncycastle.openpgp.PGPCompressedData;
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
 import org.bouncycastle.openpgp.PGPEncryptedDataGenerator;
 import org.bouncycastle.openpgp.PGPEncryptedDataList;
-import org.bouncycastle.openpgp.PGPException;
 import org.bouncycastle.openpgp.PGPLiteralData;
 import org.bouncycastle.openpgp.PGPLiteralDataGenerator;
 import org.bouncycastle.openpgp.PGPObjectFactory;
@@ -35,7 +35,6 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.util.io.Streams;
 
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.exceptions.CryptException;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 
@@ -66,18 +65,20 @@ public class Crypt {
 		Security.addProvider(new BouncyCastleProvider());
 	}
 
-	public String decryptText(String text) throws IOException, CryptException {
+	public String decryptText(String text) throws CloudsyncException {
 
 		text = text.replace('_', '/');
 		final byte[] data = Base64.decodeBase64(text);
 		return new String(decryptData(new ByteArrayInputStream(data)));
 	}
 
-	public byte[] decryptData(final InputStream stream) throws IOException, CryptException {
+	public byte[] decryptData(final InputStream stream) throws CloudsyncException {
 
-		final InputStream in = PGPUtil.getDecoderStream(stream);
+		InputStream in = null;
 
 		try {
+
+			in = PGPUtil.getDecoderStream(stream);
 
 			final PGPObjectFactory pgpF = new PGPObjectFactory(in);
 			PGPEncryptedDataList enc;
@@ -104,29 +105,40 @@ public class Crypt {
 			final PGPLiteralData ld = (PGPLiteralData) pgpFact.nextObject();
 
 			return Streams.readAll(ld.getInputStream());
-		} catch (final PGPException e) {
-
-			throw new CryptException(e);
+		} catch (Exception e) {
+			throw new CloudsyncException("can't encrypt data", e);
 		} finally {
 
-			in.close();
+			try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (IOException e) {
+				throw new CloudsyncException("can't decrypt data", e);
+			}
 		}
 	}
 
-	public byte[] getEncryptedBinary(final File file, final Item item) throws CryptException, IOException {
+	public byte[] getEncryptedBinary(final File file, final Item item) throws NoSuchFileException, CloudsyncException {
 
-		if (item.isType(ItemType.LINK)) {
+		try {
+			if (item.isType(ItemType.LINK)) {
 
-			return _encryptData(Files.readSymbolicLink(file.toPath()).toString().getBytes(), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
-		} else if (item.isType(ItemType.FILE)) {
+				return _encryptData(Files.readSymbolicLink(file.toPath()).toString().getBytes(), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+			} else if (item.isType(ItemType.FILE)) {
 
-			return _encryptData(Files.readAllBytes(file.toPath()), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+				return _encryptData(Files.readAllBytes(file.toPath()), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+			}
+		} catch (NoSuchFileException e) {
+			throw e;
+		} catch (IOException e) {
+			throw new CloudsyncException("can't read '" + item.getTypeName() + "' '" + item.getPath());
 		}
 
 		return null;
 	}
 
-	public String encryptText(String text) throws CryptException, IOException {
+	public String encryptText(String text) throws CloudsyncException {
 
 		final byte[] data = _encryptData(text.getBytes(), PGPLiteralData.CONSOLE, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 		text = Base64.encodeBase64String(data);
@@ -134,7 +146,7 @@ public class Crypt {
 		return text;
 	}
 
-	private byte[] _encryptData(final byte[] data, final String name, final int algorithm, final boolean armor) throws CryptException, IOException {
+	private byte[] _encryptData(final byte[] data, final String name, final int algorithm, final boolean armor) throws CloudsyncException {
 
 		final ByteArrayOutputStream bOut = new ByteArrayOutputStream();
 		OutputStream out = bOut;
@@ -156,15 +168,16 @@ public class Crypt {
 			encOut.close();
 
 			return bOut.toByteArray();
-
-		} catch (final PGPException e) {
-
-			throw new CryptException(e);
-
+		} catch (Exception e) {
+			throw new CloudsyncException("can't encrypt data", e);
 		} finally {
 
 			if (armor) {
-				out.close();
+				try {
+					out.close();
+				} catch (IOException e) {
+					throw new CloudsyncException("can't encrypt data", e);
+				}
 			}
 		}
 	}

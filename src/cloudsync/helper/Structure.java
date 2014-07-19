@@ -32,7 +32,6 @@ import org.apache.commons.lang3.StringUtils;
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.exceptions.CryptException;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
@@ -160,9 +159,9 @@ public class Structure {
 		}
 
 		try {
-			
-			if( root.getChildren().size() > 0 ){
-			
+
+			if (root.getChildren().size() > 0) {
+
 				LOGGER.log(Level.INFO, "write structure to cache file");
 				final PrintWriter out = new PrintWriter(cacheFilePath.toFile());
 				final CSVPrinter csvOut = new CSVPrinter(out, CSVFormat.EXCEL);
@@ -221,7 +220,18 @@ public class Structure {
 
 			final Item existingChildItem = parentItem.getChildByName(childItem.getName());
 			if (existingChildItem != null) {
-				if (childItem.getModifyTime() != null && (existingChildItem.getModifyTime() == null || existingChildItem.getModifyTime().compareTo(childItem.getModifyTime()) < 0)) {
+
+				LOGGER.log(Level.WARNING, "found duplicate: '" + childItem.getPath());
+				String msg = "";
+				if (childItem.getRemoteFilesize() != null)
+					msg += " " + childItem.getRemoteFilesize();
+				if (existingChildItem.getRemoteFilesize() != null)
+					msg += " [" + existingChildItem.getRemoteFilesize() + "]";
+				if (!StringUtils.isEmpty(msg))
+					LOGGER.log(Level.WARNING, "  size: " + msg);
+				LOGGER.log(Level.WARNING, "  created: " + childItem.getRemoteCreationTime() + " [" + existingChildItem.getRemoteCreationTime() + "]");
+
+				if (existingChildItem.getRemoteCreationTime().toMillis() > childItem.getRemoteCreationTime().toMillis()) {
 					parentItem.addChild(childItem);
 					duplicates.add(existingChildItem);
 				} else {
@@ -236,12 +246,12 @@ public class Structure {
 			}
 		}
 	}
-	
-	private void checkDuplications() throws CloudsyncException{
-		
+
+	private void checkDuplications() throws CloudsyncException {
+
 		if (duplicates.size() > 0) {
 
-			String message = "found " + duplicates.size() + " duplicate item" + ( duplicates.size() == 1 ? "" : "s" ) + ":\n\n";
+			String message = "found " + duplicates.size() + " duplicate item" + (duplicates.size() == 1 ? "" : "s") + ":\n\n";
 			final List<Item> list = new ArrayList<Item>();
 			for (final Item item : duplicates) {
 				list.addAll(_flatRecursiveChildren(item));
@@ -254,25 +264,25 @@ public class Structure {
 			throw new CloudsyncException(message);
 		}
 	}
-	
-	private boolean checkPattern( String path, String[] includePatterns, String[] excludePatterns ){
-		
-		if (includePatterns != null){
-			for( String includePattern : includePatterns ){
-				if( !path.matches("^" + includePattern + "$")){
+
+	private boolean checkPattern(String path, String[] includePatterns, String[] excludePatterns) {
+
+		if (includePatterns != null) {
+			for (String includePattern : includePatterns) {
+				if (!path.matches("^" + includePattern + "$")) {
 					return false;
 				}
 			}
 		}
-		
-		if (excludePatterns != null){
-			for( String excludePattern : excludePatterns ){
-				if( path.matches("^" + excludePattern + "$")){
+
+		if (excludePatterns != null) {
+			for (String excludePattern : excludePatterns) {
+				if (path.matches("^" + excludePattern + "$")) {
 					return false;
 				}
 			}
 		}
-		
+
 		return true;
 	}
 
@@ -301,8 +311,8 @@ public class Structure {
 		}
 	}
 
-	public void list(String[] includePatterns, String[] excludePatterns ) throws CloudsyncException {
-		
+	public void list(String[] includePatterns, String[] excludePatterns) throws CloudsyncException {
+
 		checkDuplications();
 
 		list(includePatterns, excludePatterns, root);
@@ -313,8 +323,9 @@ public class Structure {
 		for (final Item child : item.getChildren().values()) {
 
 			String path = child.getPath();
-			
-			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
+
+			if (!checkPattern(path, includePatterns, excludePatterns))
+				continue;
 
 			LOGGER.log(Level.INFO, path);
 
@@ -325,7 +336,7 @@ public class Structure {
 	}
 
 	public void restore(final boolean perform, String[] includePatterns, String[] excludePatterns) throws CloudsyncException {
-		
+
 		checkDuplications();
 
 		restore(perform, includePatterns, excludePatterns, root);
@@ -337,7 +348,8 @@ public class Structure {
 
 			String path = child.getPath();
 
-			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
+			if (!checkPattern(path, includePatterns, excludePatterns))
+				continue;
 
 			localConnection.prepareUpload(this, child, duplicateFlag);
 			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
@@ -380,16 +392,17 @@ public class Structure {
 		final Map<String, Item> unusedRemoteChildItems = remoteParentItem.getChildren();
 
 		for (File localChildFile : localConnection.readFolder(remoteParentItem)) {
-			
-			String path = localChildFile.getAbsolutePath();
-			
-			if( !checkPattern(path, includePatterns, excludePatterns)) continue;
 
-			try{
+			String path = localChildFile.getAbsolutePath();
+
+			if (!checkPattern(path, includePatterns, excludePatterns))
+				continue;
+
+			try {
 
 				Item localChildItem = localConnection.getItem(localChildFile, followlinks);
 				localChildItem.setParent(remoteParentItem);
-				
+
 				Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
 
 				if (remoteChildItem == null) {
@@ -402,12 +415,12 @@ public class Structure {
 					remoteParentItem.addChild(remoteChildItem);
 					status.create++;
 				} else {
-	
+
 					// echo item.getFileSize() +" "+
 					// this.structure[key].getFileSize()+"\n";
 					// echo item.getModifyTime() +" "+
 					// this.structure[key].getModifyTime()+"\n";
-	
+
 					if (localChildItem.isTypeChanged(remoteChildItem)) {
 						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + path + "'");
 						if (perform) {
@@ -415,7 +428,7 @@ public class Structure {
 							remoteConnection.remove(this, remoteChildItem);
 						}
 						status.remove++;
-	
+
 						remoteChildItem = localChildItem;
 						LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
 						if (perform) {
@@ -439,29 +452,27 @@ public class Structure {
 						status.skip++;
 					}
 				}
-				
-				try{
+
+				try {
 					// refresh Metadata
 					Item _localChildItem = localConnection.getItem(localChildFile, followlinks);
-					if( _localChildItem.isMetadataChanged(localChildItem) ){
-						
-						LOGGER.log(Level.WARNING,localChildItem.getTypeName()+" '"+path+"' was locally changed during remote update." );
+					if (_localChildItem.isMetadataChanged(localChildItem)) {
+
+						LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + path + "' was locally changed during remote update.");
 					}
+				} catch (NoSuchFileException e) {
+
+					LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + path + "' was locally removed during remote update.");
 				}
-				catch( NoSuchFileException e ){
-					
-					LOGGER.log(Level.WARNING,localChildItem.getTypeName()+" '"+path+"' was locally removed during remote update." );
-				}
-				
+
 				unusedRemoteChildItems.remove(remoteChildItem.getName());
-	
+
 				if (remoteChildItem.isType(ItemType.FOLDER)) {
 					backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
 				}
-			}
-			catch( NoSuchFileException e ){
-					
-				LOGGER.log(Level.WARNING,"skip '"+path+"'. does not exists anymore." );
+			} catch (NoSuchFileException e) {
+
+				LOGGER.log(Level.WARNING, "skip '" + path + "'. does not exists anymore.");
 			}
 		}
 
@@ -494,19 +505,19 @@ public class Structure {
 		return root;
 	}
 
-	public String decryptText(final String text) throws IOException, CryptException {
+	public String decryptText(final String text) throws CloudsyncException {
 		return crypt.decryptText(text);
 	}
 
-	public String encryptText(final String text) throws IOException, CryptException {
+	public String encryptText(final String text) throws CloudsyncException {
 		return crypt.encryptText(text);
 	}
 
-	public byte[] decryptData(final InputStream stream) throws IOException, CryptException {
+	public byte[] decryptData(final InputStream stream) throws CloudsyncException {
 		return crypt.decryptData(stream);
 	}
 
-	public byte[] getLocalEncryptedBinary(final Item item) throws IOException, CryptException {
+	public byte[] getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
 		return crypt.getEncryptedBinary(localConnection.getFile(item), item);
 	}
 
