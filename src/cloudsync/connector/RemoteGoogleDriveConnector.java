@@ -32,6 +32,7 @@ import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
+import cloudsync.model.RemoteItem;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -313,7 +314,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public List<Item> readFolder(final Structure structure, final Item parentItem) throws CloudsyncException {
+	public List<RemoteItem> readFolder(final Structure structure, final Item parentItem) throws CloudsyncException {
 
 		initService(structure);
 
@@ -322,7 +323,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			try {
 				refreshCredential();
 
-				final List<Item> child_items = new ArrayList<Item>();
+				final List<RemoteItem> child_items = new ArrayList<RemoteItem>();
 				final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
 				for (final File child : childDriveItems) {
 					child_items.add(_prepareBackupItem(child, structure));
@@ -440,7 +441,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return data;
 	}
 
-	private Item _prepareBackupItem(final File driveItem, final Structure structure) throws CloudsyncException {
+	private RemoteItem _prepareBackupItem(final File driveItem, final Structure structure) throws CloudsyncException {
 
 		final List<String> parts = new ArrayList<String>();
 

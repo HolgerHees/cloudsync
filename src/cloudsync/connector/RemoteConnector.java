@@ -7,10 +7,11 @@ import java.util.List;
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
+import cloudsync.model.RemoteItem;
 
 public interface RemoteConnector {
 
-	public List<Item> readFolder(Structure structure, Item parentItem) throws CloudsyncException;
+	public List<RemoteItem> readFolder(Structure structure, Item parentItem) throws CloudsyncException;
 
 	public void upload(Structure structure, Item item) throws CloudsyncException, NoSuchFileException;
 

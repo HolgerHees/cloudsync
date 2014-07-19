@@ -313,7 +313,7 @@ public class LocalFilesystemConnector {
 				type = ItemType.UNKNOWN;
 			}
 
-			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions, null, null);
+			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions);
 
 		} catch (final NoSuchFileException e) {
 

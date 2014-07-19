@@ -36,6 +36,7 @@ import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
+import cloudsync.model.RemoteItem;
 
 public class Structure {
 
@@ -212,13 +213,13 @@ public class Structure {
 
 	private void readRemoteStructure(final Item parentItem) throws CloudsyncException {
 
-		final List<Item> childItems = remoteConnection.readFolder(this, parentItem);
+		final List<RemoteItem> childItems = remoteConnection.readFolder(this, parentItem);
 
-		for (final Item childItem : childItems) {
+		for (final RemoteItem childItem : childItems) {
 
 			childItem.setParent(parentItem);
 
-			final Item existingChildItem = parentItem.getChildByName(childItem.getName());
+			final RemoteItem existingChildItem = (RemoteItem) parentItem.getChildByName(childItem.getName());
 			if (existingChildItem != null) {
 
 				LOGGER.log(Level.WARNING, "found duplicate: '" + childItem.getPath());
