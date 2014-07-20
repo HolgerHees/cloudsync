@@ -38,7 +38,10 @@ public class CmdOptions {
 	private Integer history;
 	private String[] includePatterns;
 	private String[] excludePatterns;
-	private String logpath;
+	private String logfilePath;
+	private String cachefilePath;
+	private String lockfilePath;
+	private String pidfilePath;
 	private boolean nopermissions;
 	private boolean nocache;
 	private boolean forcestart;
@@ -175,6 +178,14 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
+		OptionBuilder.withArgName("path");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Cache data to <path>");
+		OptionBuilder.withLongOpt("cachefile");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
 		OptionBuilder.withDescription("Start a 'test' run of --backup or --restore.");
 		OptionBuilder.withLongOpt("test");
 		option = OptionBuilder.create();
@@ -211,35 +222,12 @@ public class CmdOptions {
 			type = SyncType.LIST;
 		}
 
-		name = cmd.getOptionValue("name");
-
-		followlinks = LinkType.fromName(cmd.getOptionValue("followlinks", LinkType.EXTERNAL.getName()));
-		duplicate = DuplicateType.fromName(cmd.getOptionValue("duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName()));
-
 		String config = cmd.getOptionValue("config", "." + Item.SEPARATOR + "config" + Item.SEPARATOR + "cloudsync.config");
 		if (config.startsWith("." + Item.SEPARATOR)) {
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
 
-		history = (type != null && type.equals("backup")) ? Integer.parseInt(cmd.getOptionValue("history", "0")) : 0;
-
-		nopermissions = cmd.hasOption("nopermissions");
-		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
-		forcestart = cmd.hasOption("forcestart");
-		testrun = cmd.hasOption("test");
-		String pattern = cmd.getOptionValue("include");
-		if (pattern != null)
-			includePatterns = pattern.contains("|") ? pattern.split("|") : new String[] { pattern };
-		pattern = cmd.getOptionValue("exclude");
-		if (pattern != null)
-			excludePatterns = pattern.contains("|") ? pattern.split("|") : new String[] { pattern };
-
-		logpath = cmd.getOptionValue("logfile");
-
-		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
 		boolean configValid = config != null && new File(config).isFile();
-		boolean logpathValid = logpath == null || new File(logpath).getParentFile().isDirectory();
-
 		prop = new Properties();
 		try {
 			prop.load(new FileInputStream(config));
@@ -247,14 +235,45 @@ public class CmdOptions {
 			configValid = false;
 		}
 
-		final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "REMOTE_DIR", "PASSPHRASE", "CACHE_FILE", "LOCK_FILE", "PID_FILE" };
+		final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "PASSPHRASE" };
 		for (final String propertyName : propertyNames) {
 			if (StringUtils.isEmpty(prop.getProperty(propertyName))) {
 				throw new CloudsyncException("'" + propertyName + "' is not configured");
 			}
 		}
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logpathValid) {
+		name = getOptionValue(cmd, "name", null);
+
+		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
+		followlinks = LinkType.fromName(value);
+		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
+		duplicate = DuplicateType.fromName(value);
+
+		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
+
+		nopermissions = cmd.hasOption("nopermissions");
+		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
+		forcestart = cmd.hasOption("forcestart");
+		testrun = cmd.hasOption("test");
+		String pattern = getOptionValue(cmd, "include", null);
+		if (pattern != null)
+			includePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
+		pattern = getOptionValue(cmd, "exclude", null);
+		if (pattern != null)
+			excludePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
+
+		if (!StringUtils.isEmpty(name)) {
+			logfilePath = Helper.preparePath(getOptionValue(cmd, "logfile", null), name);
+			cachefilePath = Helper.preparePath(getOptionValue(cmd, "cachefile", null), name);
+			pidfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".pid";
+			lockfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".lock";
+		}
+
+		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
+		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
+		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
+
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
@@ -279,12 +298,25 @@ public class CmdOptions {
 				} else if (!configValid) {
 					messages.add(" --config <path> not valid");
 				}
-				if (!logpathValid) {
+				if (!logfileValid) {
 					messages.add(" --logfile <path> not valid");
+				}
+				if (!cachefileValid) {
+					messages.add(" --cachefile <path> not valid");
 				}
 			}
 			throw new UsageException(StringUtils.join(messages, '\n'));
 		}
+	}
+
+	public String getOptionValue(CommandLine cmd, String key, String defaultValue) {
+		String value = cmd.getOptionValue(key);
+		if (!StringUtils.isEmpty(value))
+			return value;
+		value = prop.getProperty(key.toUpperCase());
+		if (!StringUtils.isEmpty(value))
+			return value;
+		return defaultValue;
 	}
 
 	public void printHelp() {
@@ -330,7 +362,7 @@ public class CmdOptions {
 	}
 
 	public String getLogfilePath() {
-		return logpath;
+		return logfilePath;
 	}
 
 	public boolean getNoPermission() {
@@ -358,7 +390,18 @@ public class CmdOptions {
 	}
 
 	public String getProperty(String key) {
-
 		return prop.getProperty(key);
+	}
+
+	public String getCacheFile() {
+		return cachefilePath;
+	}
+
+	public String getLockFile() {
+		return lockfilePath;
+	}
+
+	public String getPIDFile() {
+		return pidfilePath;
 	}
 }

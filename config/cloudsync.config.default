@@ -1,8 +1,41 @@
+# your master password
 PASSPHRASE=
+
+# google drive client id
 REMOTE_CLIENT_ID=
+
+# google drive client secret
 REMOTE_CLIENT_SECRET=
+
+# path to store the curently used client token
 REMOTE_CLIENT_TOKEN_PATH=./.cloudsync.token
+
+# backup target on the remote server
 REMOTE_DIR=/backup
-CACHE_FILE=./.cloudsync_{name}.cache
-LOCK_FILE=./.cloudsync_{name}.lock
-PID_FILE=./.cloudsync_{name}.pid
+
+### following options are also setable via command line. values from there are preferred ###
+### {name} in *FILE properties is replaced with the currently used backup name ###
+
+# used path to the cache file.
+CACHEFILE=./.cloudsync_{name}.cache
+
+# path to the log file
+LOGFILE=./.cloudsync_{name}.log
+
+# regex based exclude pattern
+EXCLUDE=.*\\.git/.*|.*\\.svn/.*
+
+# regex based include pattern
+;INCLUDE=
+
+# backup name
+;NAME=
+
+# behavior how to handle symbolic links
+;FOLLOWLINKS=external
+
+# behavior how to handle file duplications
+;DUPLICATE=stop
+
+# Maximum number of stored histories
+;HISTORY=0

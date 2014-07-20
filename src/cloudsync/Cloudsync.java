@@ -72,8 +72,8 @@ public class Cloudsync {
 		String name = options.getName();
 
 		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options.getPath());
-		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(options.getProperty("REMOTE_CLIENT_ID"), options.getProperty("REMOTE_CLIENT_SECRET"),
-				Helper.getPathProperty(options, "REMOTE_CLIENT_TOKEN_PATH"), options.getProperty("REMOTE_DIR"), name, options.getHistory());
+		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(options.getProperty("REMOTE_CLIENT_ID"), options.getProperty("REMOTE_CLIENT_SECRET"), Helper.preparePath(
+				options.getProperty("REMOTE_CLIENT_TOKEN_PATH"), options.getName()), options.getProperty("REMOTE_DIR"), name, options.getHistory());
 
 		Structure structure = null;
 		try {
@@ -92,8 +92,7 @@ public class Cloudsync {
 
 			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getProperty("PASSPHRASE")), options.getDuplicate(), options.getFollowLinks(),
 					options.getNoPermission());
-			structure.init(Helper.getPathProperty(options, "CACHE_FILE"), Helper.getPathProperty(options, "LOCK_FILE"), Helper.getPathProperty(options, "PID_FILE"), options.getNoCache(),
-					options.getForceStart());
+			structure.init(options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
 			case BACKUP:

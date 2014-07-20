@@ -12,13 +12,11 @@ public class Helper {
 		text = StringUtils.removeEnd(text, character);
 		return text;
 	}
-	
-	public static String getPathProperty( CmdOptions options, String key ){
-		
-		String path = options.getProperty(key);
+
+	public static String preparePath(String path, String name) {
 		if (path.startsWith("." + Item.SEPARATOR)) {
 			path = System.getProperty("user.dir") + path.substring(1);
 		}
-		return path;
+		return path.replace("{name}", name);
 	}
 }
