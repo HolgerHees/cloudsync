@@ -268,7 +268,7 @@ public class CmdOptions {
 			lockfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".lock";
 		}
 
-		final boolean baseValid = "list".equals(type) || (path != null && new File(path).isDirectory());
+		final boolean baseValid = "list".equals(type.getName()) || (path != null && new File(path).isDirectory());
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
@@ -281,7 +281,7 @@ public class CmdOptions {
 				if (type == null) {
 					messages.add(" You must specifiy --backup, --restore, --list or --clean");
 				} else if (!baseValid) {
-					messages.add(" --" + type + " <path> not valid");
+					messages.add(" --" + type.getName() + " <path> not valid");
 				}
 				if (name == null) {
 					messages.add(" Missing --name <name>");
