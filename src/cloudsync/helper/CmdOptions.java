@@ -268,7 +268,7 @@ public class CmdOptions {
 			lockfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".lock";
 		}
 
-		final boolean baseValid = "list".equals(type.getName()) || (path != null && new File(path).isDirectory());
+		final boolean baseValid = SyncType.LIST.equals(type) || (path != null && new File(path).isDirectory());
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
