@@ -18,14 +18,13 @@ The filecompare is done by comparing the archived metadata. It uses a local cach
 
 **java >= 7 and Java Cryptography Extension (JCE)**
 
-To use it, copy 'config/cloudsync.config.default' to 'config/cloudsync.config' and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET.  
-The last two can be generated on https://console.developers.google.com/project. PASSPHRASE will be your masterpassword for all archived files.
+To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials.
 
-to create a backup of '/data' call:
+to create a backup of '/data', call:
 
 ```./cloudsync --backup /data --name dataBackup```
 
-to restore a backup into '/restore' call:
+to restore a backup into '/restore', call:
 
 ```./cloudsync --restore /restore --name dataBackup```
 
@@ -58,6 +57,7 @@ usage: cloudsync <options>
     --nocache                          Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                       Ignore a existing pid file. Should only be used after a previous crashed job.
     --logfile <path>                   Log message to <path>
+    --cachefile <path>                 Cache data to <path>
     --test                             Start a 'test' run of --backup or --restore.
  -h,--help                             Show this help
 ```
