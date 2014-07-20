@@ -58,6 +58,7 @@ usage: cloudsync <options>
     --nocache                          Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                       Ignore a existing pid file. Should only be used after a previous crashed job.
     --logfile <path>                   Log message to <path>
+    --cachefile <path>                 Cache data to <path>
     --test                             Start a 'test' run of --backup or --restore.
  -h,--help                             Show this help
 ```
