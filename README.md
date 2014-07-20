@@ -18,8 +18,7 @@ The filecompare is done by comparing the archived metadata. It uses a local cach
 
 **java >= 7 and Java Cryptography Extension (JCE)**
 
-To use it, copy 'config/cloudsync.config.default' to 'config/cloudsync.config' and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET.  
-The last two can be generated on https://console.developers.google.com/project. PASSPHRASE will be your masterpassword for all archived files.
+To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials.
 
 to create a backup of '/data' call:
 
