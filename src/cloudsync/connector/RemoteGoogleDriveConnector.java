@@ -89,15 +89,12 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private final Integer historyCount;
 	private long lastValidate = 0;
 
-	public RemoteGoogleDriveConnector(final String clientId, final String clientSecret, final String clientTokenPath, String basePath, final String backupName, final Integer history)
-			throws CloudsyncException {
+	public RemoteGoogleDriveConnector(RemoteGoogleDriveOptions options, final String backupName, final Integer history) throws CloudsyncException {
 
 		cacheFiles = new HashMap<String, File>();
 		cacheParents = new HashMap<String, File>();
 
-		basePath = Helper.trim(basePath, Item.SEPARATOR);
-
-		this.basePath = basePath;
+		this.basePath = Helper.trim(options.getClientBasePath(), Item.SEPARATOR);
 		this.backupName = backupName;
 		this.historyCount = history;
 		this.historyName = history > 0 ? backupName + " " + new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss").format(new Date()) : null;
@@ -105,15 +102,16 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		final HttpTransport httpTransport = new NetHttpTransport();
 		final JsonFactory jsonFactory = new JacksonFactory();
 
-		final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, clientId, clientSecret, Arrays.asList(DriveScopes.DRIVE)).setAccessType("offline")
-				.setApprovalPrompt("auto").build();
+		final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, options.getClientID(), options.getClientSecret(), Arrays.asList(DriveScopes.DRIVE))
+				.setAccessType("offline").setApprovalPrompt("auto").build();
 
-		this.clientTokenPath = Paths.get(clientTokenPath);
+		this.clientTokenPath = Paths.get(options.getClientTokenPath());
 
 		try {
 			final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile()) : null;
 
-			credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory()).setClientSecrets(clientId, clientSecret).build();
+			credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory()).setClientSecrets(options.getClientID(), options.getClientSecret())
+					.build();
 
 			if (StringUtils.isEmpty(clientTokenAsJson)) {
 

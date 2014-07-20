@@ -31,6 +31,8 @@ public class CmdOptions {
 	private final List<Option> positions;
 	private final String[] args;
 
+	private String passphrase;
+
 	private Properties prop;
 	private SyncType type;
 	private String path;
@@ -235,15 +237,12 @@ public class CmdOptions {
 			configValid = false;
 		}
 
-		final String[] propertyNames = new String[] { "REMOTE_CLIENT_ID", "REMOTE_CLIENT_SECRET", "REMOTE_CLIENT_TOKEN_PATH", "PASSPHRASE" };
-		for (final String propertyName : propertyNames) {
-			if (StringUtils.isEmpty(prop.getProperty(propertyName))) {
-				throw new CloudsyncException("'" + propertyName + "' is not configured");
-			}
-		}
-
 		name = getOptionValue(cmd, "name", null);
 
+		passphrase = prop.getProperty("PASSPHRASE");
+		if (StringUtils.isEmpty(passphrase)) {
+			throw new CloudsyncException("'PASSPHRASE' is not configured");
+		}
 		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
 		followlinks = LinkType.fromName(value);
 		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
@@ -403,5 +402,9 @@ public class CmdOptions {
 
 	public String getPIDFile() {
 		return pidfilePath;
+	}
+
+	public String getPassphrase() {
+		return passphrase;
 	}
 }

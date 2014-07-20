@@ -15,11 +15,11 @@ import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteGoogleDriveConnector;
+import cloudsync.connector.RemoteGoogleDriveOptions;
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.exceptions.UsageException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Crypt;
-import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.logging.LogconsoleHandler;
 import cloudsync.logging.LogfileFormatter;
@@ -72,8 +72,7 @@ public class Cloudsync {
 		String name = options.getName();
 
 		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options.getPath());
-		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(options.getProperty("REMOTE_CLIENT_ID"), options.getProperty("REMOTE_CLIENT_SECRET"), Helper.preparePath(
-				options.getProperty("REMOTE_CLIENT_TOKEN_PATH"), options.getName()), options.getProperty("REMOTE_DIR"), name, options.getHistory());
+		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(new RemoteGoogleDriveOptions(options, name), name, options.getHistory());
 
 		Structure structure = null;
 		try {
@@ -90,8 +89,7 @@ public class Cloudsync {
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getProperty("PASSPHRASE")), options.getDuplicate(), options.getFollowLinks(),
-					options.getNoPermission());
+			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getNoPermission());
 			structure.init(options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
