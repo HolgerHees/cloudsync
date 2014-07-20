@@ -394,21 +394,23 @@ public class Structure {
 
 		for (File localChildFile : localConnection.readFolder(remoteParentItem)) {
 
-			String path = localChildFile.getAbsolutePath();
-
-			if (!checkPattern(path, includePatterns, excludePatterns))
+			String filePath = localChildFile.getAbsolutePath();
+			if (!checkPattern(filePath, includePatterns, excludePatterns))
 				continue;
 
+			String backupPath = filePath;
 			try {
 
 				Item localChildItem = localConnection.getItem(localChildFile, followlinks);
 				localChildItem.setParent(remoteParentItem);
 
+				backupPath = localChildItem.getPath();
+
 				Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
 
 				if (remoteChildItem == null) {
 					remoteChildItem = localChildItem;
-					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
+					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
 					if (perform) {
 						createLock();
 						remoteConnection.upload(this, remoteChildItem);
@@ -423,7 +425,7 @@ public class Structure {
 					// this.structure[key].getModifyTime()+"\n";
 
 					if (localChildItem.isTypeChanged(remoteChildItem)) {
-						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + path + "'");
+						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
 						if (perform) {
 							createLock();
 							remoteConnection.remove(this, remoteChildItem);
@@ -431,7 +433,7 @@ public class Structure {
 						status.remove++;
 
 						remoteChildItem = localChildItem;
-						LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + path + "'");
+						LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
 						if (perform) {
 							createLock();
 							remoteConnection.upload(this, remoteChildItem);
@@ -443,7 +445,7 @@ public class Structure {
 					else if (localChildItem.isMetadataChanged(remoteChildItem)) {
 						final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
 						remoteChildItem.update(localChildItem);
-						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + path + "'");
+						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
 						if (perform) {
 							createLock();
 							remoteConnection.update(this, remoteChildItem, isFiledataChanged);
@@ -459,11 +461,11 @@ public class Structure {
 					Item _localChildItem = localConnection.getItem(localChildFile, followlinks);
 					if (_localChildItem.isMetadataChanged(localChildItem)) {
 
-						LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + path + "' was locally changed during remote update.");
+						LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + backupPath + "' was changed during update.");
 					}
 				} catch (NoSuchFileException e) {
 
-					LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + path + "' was locally removed during remote update.");
+					LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + backupPath + "' was removed during update.");
 				}
 
 				unusedRemoteChildItems.remove(remoteChildItem.getName());
@@ -473,7 +475,7 @@ public class Structure {
 				}
 			} catch (NoSuchFileException e) {
 
-				LOGGER.log(Level.WARNING, "skip '" + path + "'. does not exists anymore.");
+				LOGGER.log(Level.WARNING, "skip '" + backupPath + "'. does not exists anymore.");
 			}
 		}
 
