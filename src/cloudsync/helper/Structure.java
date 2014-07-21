@@ -213,6 +213,14 @@ public class Structure {
 
 	private void readRemoteStructure(final Item parentItem) throws CloudsyncException {
 
+		Map<ItemType, Integer> status = new HashMap<ItemType, Integer>();
+		readRemoteStructure(parentItem, status);
+		if (status.size() > 0)
+			LOGGER.log(Level.INFO, formatRemoteStatus(status));
+	}
+
+	private void readRemoteStructure(final Item parentItem, Map<ItemType, Integer> status) throws CloudsyncException {
+
 		final List<RemoteItem> childItems = remoteConnection.readFolder(this, parentItem);
 
 		for (final RemoteItem childItem : childItems) {
@@ -238,14 +246,50 @@ public class Structure {
 				} else {
 					duplicates.add(childItem);
 				}
+
+				putRemoteStatus(status, ItemType.DUPLICATE);
+
 			} else {
 				parentItem.addChild(childItem);
 			}
 
+			if (status.size() > 0)
+				LOGGER.log(Level.INFO, "\r  " + formatRemoteStatus(status), true);
+
+			putRemoteStatus(status, childItem.getType());
+
 			if (childItem.isType(ItemType.FOLDER)) {
-				readRemoteStructure(childItem);
+				readRemoteStructure(childItem, status);
 			}
 		}
+	}
+
+	private void putRemoteStatus(Map<ItemType, Integer> status, ItemType type) {
+
+		Integer count = status.get(type);
+		if (count == null)
+			count = new Integer(0);
+		count++;
+		status.put(type, count);
+	}
+
+	private String formatRemoteStatus(Map<ItemType, Integer> status) {
+
+		List<String> typeStatus = new ArrayList<String>();
+		for (ItemType type : ItemType.values()) {
+			Integer count = status.get(type);
+			if (count == null)
+				continue;
+			typeStatus.add(count + " " + type.getName(count));
+		}
+
+		String lastType = typeStatus.remove(typeStatus.size() - 1);
+		String message = StringUtils.join(typeStatus, ", ");
+		if (message.length() > 0) {
+			message += " and ";
+		}
+		message += lastType;
+		return "found " + message;
 	}
 
 	private void checkDuplications() throws CloudsyncException {

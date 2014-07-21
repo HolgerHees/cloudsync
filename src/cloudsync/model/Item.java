@@ -143,6 +143,11 @@ public class Item {
 		return type.getName();
 	}
 
+	public ItemType getType() {
+
+		return type;
+	}
+
 	public boolean isTypeChanged(final Item item) {
 		return !type.equals(item.type);
 	}

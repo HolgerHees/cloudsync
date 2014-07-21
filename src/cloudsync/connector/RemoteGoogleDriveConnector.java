@@ -68,6 +68,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	final static String FILE = "application/octet-stream";
 
 	final static int MIN_SEARCH_BREAK = 5000;
+	final static int MIN_SEARCH_RETRIES = 6;
 	final static int MIN_RETRY_BREAK = 10000;
 	final static int RETRY_COUNT = 6; // => readtimeout of 6 x 20 sec, 2 min
 	final static int CHUNK_COUNT = 4; // * 256kb
@@ -188,15 +189,20 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				throw e;
 			} catch (final IOException e) {
 				if (title != null) {
-					sleep(MIN_SEARCH_BREAK);
-					driveItem = _searchDriveItem(item.getParent(), title);
-					if (driveItem != null) {
+					for (int i = 0; i < MIN_SEARCH_RETRIES; i++) {
+						driveItem = _searchDriveItem(item.getParent(), title);
+						if (driveItem != null) {
 
-						LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - item allready uploaded. try to update now.");
+							LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - item allready uploaded. try to update now.");
 
-						item.setRemoteIdentifier(driveItem.getId());
-						update(structure, item, true);
-						return;
+							item.setRemoteIdentifier(driveItem.getId());
+							update(structure, item, true);
+							return;
+						} else {
+
+							LOGGER.log(Level.WARNING, "ioexception: '" + e.getMessage() + "' - item not uploaded.");
+						}
+						sleep(MIN_SEARCH_BREAK);
 					}
 				}
 				retryCount = validateException("remote upload", item, e, retryCount);
