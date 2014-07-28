@@ -176,11 +176,7 @@ public class LocalFilesystemConnector {
 				try {
 					encryptedStream = structure.getRemoteEncryptedBinary(item);
 					final byte[] data = structure.decryptData(encryptedStream);
-					String checksum = DigestUtils.md2Hex(data);
-
-					System.out.println(checksum + " " + item.getChecksum());
-
-					if (!checksum.equals(item.getChecksum())) {
+					if (!createChecksum(data).equals(item.getChecksum())) {
 
 						LOGGER.log(Level.WARNING, "restored filechecksum differs from the original filechecksum");
 					}
@@ -370,6 +366,11 @@ public class LocalFilesystemConnector {
 		return permissions;
 	}
 
+	public String createChecksum(final byte[] data) {
+
+		return DigestUtils.md5Hex(data);
+	}
+
 	public byte[] getFileBinary(final Item item) throws CloudsyncException {
 
 		File file = new File(localPath + Item.SEPARATOR + item.getPath());
@@ -381,7 +382,7 @@ public class LocalFilesystemConnector {
 			} else if (item.isType(ItemType.FILE)) {
 
 				byte[] data = Files.readAllBytes(file.toPath());
-				item.setChecksum(DigestUtils.md5Hex(data));
+				item.setChecksum(createChecksum(data));
 				return data;
 			}
 			return null;
