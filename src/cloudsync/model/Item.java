@@ -1,6 +1,7 @@
 package cloudsync.model;
 
 import java.io.File;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.FileTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,6 +10,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+
+import cloudsync.exceptions.CloudsyncException;
+import cloudsync.helper.Structure;
 
 public class Item {
 
@@ -26,6 +30,10 @@ public class Item {
 	private String group;
 	private String user;
 	private Integer permissions;
+
+	private String checksum;
+
+	protected boolean needsMetadataUpgrade;
 
 	private Map<String, Item> children;
 
@@ -65,7 +73,9 @@ public class Item {
 		final String user = StringUtils.isEmpty(values.get(8)) ? null : values.get(8);
 		final Integer permissions = StringUtils.isEmpty(values.get(9)) ? null : Integer.parseInt(values.get(9));
 
-		return new Item(name, remoteIndentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
+		Item item = new Item(name, remoteIndentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
+		item.setChecksum(values.get(10));
+		return item;
 	}
 
 	public String[] toArray() {
@@ -73,7 +83,7 @@ public class Item {
 		return new String[] { getPath(), remoteIdentifier, type.toString(), filesize == null ? null : filesize.toString(),
 				creationtime == null ? null : new Long(creationtime.to(TimeUnit.SECONDS)).toString(), modifytime == null ? null : new Long(modifytime.to(TimeUnit.SECONDS)).toString(),
 				accesstime == null ? null : new Long(accesstime.to(TimeUnit.SECONDS)).toString(), group == null ? null : group, user == null ? null : user,
-				permissions == null ? null : permissions.toString() };
+				permissions == null ? null : permissions.toString(), checksum };
 	}
 
 	public static RemoteItem fromMetadata(final String name, final String remoteIdentifier, final boolean isFolder, final String[] metadata, Long remoteFilesize, FileTime remoteCreationtime) {
@@ -100,14 +110,30 @@ public class Item {
 		}
 
 		RemoteItem item = new RemoteItem(name, remoteIdentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions, remoteFilesize, remoteCreationtime);
+		if (metadata.length > 8) {
+			item.setChecksum(metadata[8]);
+		} else {
+			item.needsMetadataUpgrade = true;
+		}
 		return item;
 	}
 
-	public String[] getMetadata() {
+	public String[] getMetadata(Structure structure) throws CloudsyncException {
+
+		if (needsMetadataUpgrade) {
+
+			if (checksum == null) {
+				try {
+					// force a checksum update
+					structure.getLocalEncryptedBinary(this);
+				} catch (NoSuchFileException e) {
+				}
+			}
+		}
 
 		return new String[] { type.toString(), filesize != null ? filesize.toString() : null, creationtime != null ? new Long(creationtime.to(TimeUnit.SECONDS)).toString() : null,
 				modifytime != null ? new Long(modifytime.to(TimeUnit.SECONDS)).toString() : null, accesstime != null ? new Long(accesstime.to(TimeUnit.SECONDS)).toString() : null, group, user,
-				permissions != null ? permissions.toString() : null };
+				permissions != null ? permissions.toString() : null, checksum };
 	}
 
 	public void setParent(final Item parent) {
@@ -153,18 +179,22 @@ public class Item {
 	}
 
 	public boolean isFiledataChanged(final Item item) {
-		if (isChanged(filesize, item.filesize)) {
-			return true;
+
+		if (type.equals(ItemType.FILE) || item.equals(ItemType.LINK)) {
+
+			if (isChanged(filesize, item.filesize)) {
+				return true;
+			}
+			if (isChanged(creationtime, item.creationtime)) {
+				return true;
+			}
+			if (isChanged(modifytime, item.modifytime)) {
+				return true;
+			}
+			/*
+			 * if (isChanged(accesstime, item.accesstime)) { return true; }
+			 */
 		}
-		if (isChanged(creationtime, item.creationtime)) {
-			return true;
-		}
-		if (isChanged(modifytime, item.modifytime)) {
-			return true;
-		}
-		/*
-		 * if (isChanged(accesstime, item.accesstime)) { return true; }
-		 */
 		return false;
 	}
 
@@ -191,7 +221,15 @@ public class Item {
 		if (isChanged(permissions, item.permissions)) {
 			return true;
 		}
+		if (needsMetadataUpgrade) {
+			return true;
+		}
 		return false;
+	}
+
+	public boolean isMetadataFormatChanged() {
+
+		return needsMetadataUpgrade;
 	}
 
 	private boolean isChanged(final Object o1, final Object o2) {
@@ -227,6 +265,14 @@ public class Item {
 
 	public void setName(final String name) {
 		this.name = name;
+	}
+
+	public void setChecksum(final String checksum) {
+		this.checksum = checksum;
+	}
+
+	public String getChecksum() {
+		return this.checksum;
 	}
 
 	public String getRemoteIdentifier() {

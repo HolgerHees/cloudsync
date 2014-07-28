@@ -414,7 +414,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
-		final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(), ":"));
+		byte[] data = null;
+		if (with_filedata) {
+
+			// "getLocalEncryptedBinary" should be called before "getMetadata"
+			// to generate the needed checksum
+			data = structure.getLocalEncryptedBinary(item);
+		}
+
+		final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(structure), ":"));
 
 		final List<Property> properties = new ArrayList<Property>();
 
@@ -433,11 +441,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		driveItem.setMimeType(item.isType(ItemType.FOLDER) ? FOLDER : FILE);
 
-		byte[] data = null;
-		if (with_filedata) {
-
-			data = structure.getLocalEncryptedBinary(item);
-		}
 		return data;
 	}
 

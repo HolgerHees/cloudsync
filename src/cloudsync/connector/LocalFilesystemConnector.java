@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -175,6 +176,14 @@ public class LocalFilesystemConnector {
 				try {
 					encryptedStream = structure.getRemoteEncryptedBinary(item);
 					final byte[] data = structure.decryptData(encryptedStream);
+					String checksum = DigestUtils.md2Hex(data);
+
+					System.out.println(checksum + " " + item.getChecksum());
+
+					if (!checksum.equals(item.getChecksum())) {
+
+						LOGGER.log(Level.WARNING, "restored filechecksum differs from the original filechecksum");
+					}
 					final FileOutputStream fos = new FileOutputStream(path.toFile());
 					try {
 						if (item.getFilesize() != data.length) {
@@ -194,7 +203,11 @@ public class LocalFilesystemConnector {
 		}
 
 		try {
-			Files.getFileAttributeView(path, BasicFileAttributeView.class).setTimes(item.getModifyTime(), item.getAccessTime(), item.getCreationTime());
+			if (item.isType(ItemType.LINK)) {
+				// Files.setLastModifiedTime(path, item.getModifyTime());
+			} else {
+				Files.getFileAttributeView(path, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).setTimes(item.getModifyTime(), item.getAccessTime(), item.getCreationTime());
+			}
 		} catch (final IOException e) {
 			throw new CloudsyncException("Can't set create, modify and access time of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 		}
@@ -357,8 +370,24 @@ public class LocalFilesystemConnector {
 		return permissions;
 	}
 
-	public File getFile(final Item item) {
+	public byte[] getFileBinary(final Item item) throws CloudsyncException {
 
-		return new File(localPath + Item.SEPARATOR + item.getPath());
+		File file = new File(localPath + Item.SEPARATOR + item.getPath());
+
+		try {
+			if (item.isType(ItemType.LINK)) {
+
+				return Files.readSymbolicLink(file.toPath()).toString().getBytes();
+			} else if (item.isType(ItemType.FILE)) {
+
+				byte[] data = Files.readAllBytes(file.toPath());
+				item.setChecksum(DigestUtils.md5Hex(data));
+				return data;
+			}
+			return null;
+		} catch (final IOException e) {
+
+			throw new CloudsyncException("Can't read data of '" + file.getAbsolutePath() + "'", e);
+		}
 	}
 }

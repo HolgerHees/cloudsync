@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -468,7 +469,7 @@ public class Structure {
 					// echo item.getModifyTime() +" "+
 					// this.structure[key].getModifyTime()+"\n";
 
-					if (localChildItem.isTypeChanged(remoteChildItem)) {
+					if (remoteChildItem.isTypeChanged(localChildItem)) {
 						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
 						if (perform) {
 							createLock();
@@ -486,10 +487,17 @@ public class Structure {
 						status.create++;
 					}
 					// check filesize and modify time
-					else if (localChildItem.isMetadataChanged(remoteChildItem)) {
+					else if (remoteChildItem.isMetadataChanged(localChildItem)) {
 						final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
 						remoteChildItem.update(localChildItem);
-						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
+						List<String> types = new ArrayList<String>();
+						if (isFiledataChanged)
+							types.add("data,attributes");
+						else if (!isFiledataChanged)
+							types.add("attributes");
+						if (remoteChildItem.isMetadataFormatChanged())
+							types.add("format");
+						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + backupPath + "' [" + StringUtils.join(types, ",") + "]");
 						if (perform) {
 							createLock();
 							remoteConnection.update(this, remoteChildItem, isFiledataChanged);
@@ -565,7 +573,12 @@ public class Structure {
 	}
 
 	public byte[] getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
-		return crypt.getEncryptedBinary(localConnection.getFile(item), item);
+		byte[] data = localConnection.getFileBinary(item);
+		if (data != null) {
+			item.setChecksum(DigestUtils.md5Hex(data));
+			data = crypt.getEncryptedBinary(item.getName(), data, item);
+		}
+		return data;
 	}
 
 	public InputStream getRemoteEncryptedBinary(final Item item) throws IOException, CloudsyncException {

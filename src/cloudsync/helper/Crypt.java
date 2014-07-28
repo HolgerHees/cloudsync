@@ -2,11 +2,9 @@ package cloudsync.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -36,7 +34,6 @@ import org.bouncycastle.util.io.Streams;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.model.Item;
-import cloudsync.model.ItemType;
 
 public class Crypt {
 
@@ -119,23 +116,9 @@ public class Crypt {
 		}
 	}
 
-	public byte[] getEncryptedBinary(final File file, final Item item) throws NoSuchFileException, CloudsyncException {
+	public byte[] getEncryptedBinary(final String name, final byte[] data, final Item item) throws NoSuchFileException, CloudsyncException {
 
-		try {
-			if (item.isType(ItemType.LINK)) {
-
-				return _encryptData(Files.readSymbolicLink(file.toPath()).toString().getBytes(), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
-			} else if (item.isType(ItemType.FILE)) {
-
-				return _encryptData(Files.readAllBytes(file.toPath()), file.getName(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
-			}
-		} catch (NoSuchFileException e) {
-			throw e;
-		} catch (IOException e) {
-			throw new CloudsyncException("can't read '" + item.getTypeName() + "' '" + item.getPath());
-		}
-
-		return null;
+		return _encryptData(data, name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 	}
 
 	public String encryptText(String text) throws CloudsyncException {
