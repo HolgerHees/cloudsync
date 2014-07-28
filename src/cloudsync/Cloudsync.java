@@ -90,7 +90,7 @@ public class Cloudsync {
 			}
 
 			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getNoPermission());
-			structure.init(options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
+			structure.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
 			case BACKUP:

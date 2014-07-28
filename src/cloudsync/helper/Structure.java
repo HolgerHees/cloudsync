@@ -38,6 +38,7 @@ import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
 import cloudsync.model.RemoteItem;
+import cloudsync.model.SyncType;
 
 public class Structure {
 
@@ -58,7 +59,7 @@ public class Structure {
 	private Path cacheFilePath;
 	private Path lockFilePath;
 	private Path pidFilePath;
-	private boolean pidCleanup = true;
+	private boolean pidCleanup = false;
 
 	private boolean isLocked = false;
 
@@ -85,25 +86,27 @@ public class Structure {
 		duplicates = new ArrayList<Item>();
 	}
 
-	public void init(String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException {
+	public void init(SyncType synctype, String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException {
 
 		cacheFilePath = Paths.get(cacheFile.replace("{name}", name));
 		lockFilePath = Paths.get(lockFile.replace("{name}", name));
 		pidFilePath = Paths.get(pidFile.replace("{name}", name));
 
-		if (!forcestart && Files.exists(pidFilePath, LinkOption.NOFOLLOW_LINKS)) {
-			pidCleanup = false;
-			throw new CloudsyncException("Other job is running or previous job has crashed. If you are sure that no other job is running use the option '--forcestart'");
-		}
+		if (synctype.checkPID()) {
+			if (!forcestart && Files.exists(pidFilePath, LinkOption.NOFOLLOW_LINKS)) {
+				throw new CloudsyncException("Other job is running or previous job has crashed. If you are sure that no other job is running use the option '--forcestart'");
+			}
 
-		RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
-		String jvmName = bean.getName();
-		long pid = Long.valueOf(jvmName.split("@")[0]);
+			RuntimeMXBean bean = ManagementFactory.getRuntimeMXBean();
+			String jvmName = bean.getName();
+			long pid = Long.valueOf(jvmName.split("@")[0]);
 
-		try {
-			Files.write(pidFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-		} catch (IOException e) {
-			throw new CloudsyncException("Couldn't create '" + pidFilePath.toString() + "'");
+			try {
+				Files.write(pidFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				pidCleanup = true;
+			} catch (IOException e) {
+				throw new CloudsyncException("Couldn't create '" + pidFilePath.toString() + "'");
+			}
 		}
 
 		if (Files.exists(lockFilePath, LinkOption.NOFOLLOW_LINKS)) {
