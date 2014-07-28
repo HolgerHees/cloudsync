@@ -1,7 +1,7 @@
 cloudsync
 =========
 
-Sync a linux filesystem incremental and encrypted with google drive simliar to rsync.
+Sync a filesystem incremental and encrypted with google drive simliar to rsync.
 
 It encrypt and decrypt the file, the filenames and all archived metadata with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt archives with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
