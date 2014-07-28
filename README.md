@@ -13,6 +13,7 @@ Archived metadata are:
 - gid
 - uid
 - permissions
+- md5 checksum
 
 The filecompare is done by comparing the archived metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
