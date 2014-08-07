@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd `dirname $0`
+
 JAVA="java"
 
 VERSION=$("$JAVA" -version 2>&1 | awk -F '"' '/version/ {print $2}')
