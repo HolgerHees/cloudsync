@@ -5,9 +5,11 @@ Sync a local filesystem incremental and encrypted with google drive simliar to r
 
 To give you a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
-It encrypt and decrypt the filedata, the filename and all archived metadata with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt archives with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
+It encrypt and decrypt each file (content, filename and metadata) with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt uploaded file with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
-Archived metadata are:
+Encrypted data includes:
+- filecontent
+- filename
 - filesize
 - createtime 
 - modifytime
