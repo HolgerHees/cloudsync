@@ -5,7 +5,7 @@ Sync a local filesystem incremental and encrypted with google drive simliar to r
 
 Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematically for private async dsl connections. To solve this issues each file is encrypted and uploaded separately.
 
-To give you a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
+To get a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
 The encryption is based on OpenPGP with AES 256 and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
