@@ -1,7 +1,9 @@
 cloudsync
 =========
 
-Sync a local filesystem incremental and encrypted with google drive simliar to rsync or restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data. To give you a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
+Sync a local filesystem incremental and encrypted with google drive simliar to rsync or restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
+
+To give you a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
 It encrypt and decrypt the filedata, the filename and all archived metadata with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt archives with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
