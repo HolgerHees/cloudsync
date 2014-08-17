@@ -1,11 +1,11 @@
 cloudsync
 =========
 
-Sync a local filesystem incremental and encrypted with google drive simliar to rsync or restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data. Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematically for private async dsl connections.
+Sync a local filesystem incremental and encrypted with google drive simliar to rsync or restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data. Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematically for private async dsl connections. To solve this issues each file is encrypted and uploaded separately.
 
 To give you a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
-It encrypt and decrypt each file (content, filename and metadata) with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt uploaded file with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
+The encryption is based on OpenPGP with AES 256 and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
 Encrypted data includes:
 - filecontent
