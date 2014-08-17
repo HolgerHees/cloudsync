@@ -23,11 +23,11 @@ Encrypted data includes:
 
 The filecompare is done by comparing the archived metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
-To provide additional cloud targets like Dropbox or Microsoft OneDrive just implement only 6 functions from the class [Connector.java](https://github.com/HolgerHees/cloudsync/blob/master/src/cloudsync/connector/RemoteConnector.java). 
+To provide additional cloud targets like Dropbox or Microsoft OneDrive just implement 6 functions from the interface [Connector.java](https://github.com/HolgerHees/cloudsync/blob/master/src/cloudsync/connector/RemoteConnector.java). 
 
-**java >= 7 and Java Cryptography Extension (JCE)**
+**java >= 7 and Java Cryptography Extension (JCE) is required**
 
-Currently it is tested and works fine on linux but with a few fixes it should also work on windows or osx.
+It is tested and works fine on linux but with a few fixes it should also work on windows or osx. Feel free to submit patches for improvements and bugfixes!
 
 To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials.
 
