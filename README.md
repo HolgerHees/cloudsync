@@ -10,13 +10,10 @@ To get a first impression you should take a look at [these screenshot](https://g
 The encryption is based on OpenPGP with AES 256 and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
 Encrypted data includes:
-- filecontent
-- filename
-- filesize
 - filetype [folder,file,symlink]
+- filecontent, filename and original filesize
 - createtime, modifytime and accesstime
-- gid and uid
-- permissions
+- gid, uid and permissions
 - md5 checksum
 
 Filechanges are detected by comparing the file metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
