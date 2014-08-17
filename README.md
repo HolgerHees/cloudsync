@@ -13,15 +13,13 @@ Encrypted data includes:
 - filecontent
 - filename
 - filesize
-- createtime 
-- modifytime
-- accesstime
-- gid
-- uid
+- filetype [folder,file,symlink]
+- createtime, modifytime and accesstime
+- gid and uid
 - permissions
 - md5 checksum
 
-The filecompare is done by comparing the archived metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
+Filechanges are detected by comparing the file metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
 To provide additional cloud targets like Dropbox or Microsoft OneDrive just implement 6 functions from the interface [Connector.java](https://github.com/HolgerHees/cloudsync/blob/master/src/cloudsync/connector/RemoteConnector.java). 
 
