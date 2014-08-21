@@ -1,23 +1,28 @@
 cloudsync
 =========
 
-Sync a filesystem incremental and encrypted with google drive simliar to rsync.
+Sync a local filesystem incremental and encrypted with google drive simliar to rsync or restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
 
-It encrypt and decrypt the file, the filenames and all archived metadata with OpenPGP based AES 256 encryption and a passphrase. It is possible to decrypt archives with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
+Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematically for private async dsl connections. To solve this issues each file is encrypted and uploaded separately.
 
-Archived metadata are:
-- filesize
-- createtime 
-- modifytime
-- accesstime
-- gid
-- uid
-- permissions
+To get a first impression you should take a look at [these screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
+
+The encryption is based on OpenPGP with AES 256 and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
+
+Encrypted data includes:
+- filetype [folder,file,symlink]
+- filecontent, filename and original filesize
+- createtime, modifytime and accesstime
+- gid, uid and permissions
 - md5 checksum
 
-The filecompare is done by comparing the archived metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
+Filechanges are detected by comparing the file metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
-**java >= 7 and Java Cryptography Extension (JCE)**
+To provide additional cloud targets like Dropbox or Microsoft OneDrive just implement 6 functions from the interface [Connector.java](https://github.com/HolgerHees/cloudsync/blob/master/src/cloudsync/connector/RemoteConnector.java). 
+
+**java >= 7 and Java Cryptography Extension (JCE) is required**
+
+It is tested and works fine on linux but with a few fixes it should also work on windows or osx. Feel free to submit patches for improvements and bugfixes!
 
 To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials.
 
