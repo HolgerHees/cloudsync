@@ -22,7 +22,7 @@ To provide additional cloud targets like Dropbox or Microsoft OneDrive just impl
 
 **java >= 7 and Java Cryptography Extension (JCE) is required**
 
-It is tested and works fine on linux but with a few fixes it should also work on windows or osx. Feel free to submit patches for improvements and bugfixes!
+It is tested and works fine on linux, windows and osx. On windows there is currently no support for file permissions but i'm working on it. Feel free to submit patches for improvements and bugfixes!
 
 To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, REMOTE_CLIENT_ID and REMOTE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials.
 
