@@ -11,6 +11,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -63,9 +65,14 @@ public class LocalFilesystemConnector {
 	private final String localPath;
 
 	public LocalFilesystemConnector(final String path) {
-
-		localPath = Item.SEPARATOR + Helper.trim(path, Item.SEPARATOR);
-
+		
+		if( path.startsWith(Item.SEPARATOR) ){
+			localPath = Item.SEPARATOR + Helper.trim(path, Item.SEPARATOR);
+		}
+		else{
+			localPath = Helper.trim(path, Item.SEPARATOR);
+		}
+	
 		for (final Integer key : toPermMapping.keySet()) {
 
 			final PosixFilePermission perm = toPermMapping.get(key);
@@ -115,9 +122,6 @@ public class LocalFilesystemConnector {
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
 
 		final Path path = Paths.get(_path);
-
-		// PosixFileAttributes attr = Files.readAttributes(file.toPath(),
-		// PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 
 		if (exists(path)) {
 
@@ -223,7 +227,7 @@ public class LocalFilesystemConnector {
 					}
 					throw new CloudsyncException("Group '" + item.getGroup() + "' on '" + item.getPath() + "' not found");
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set group '" + item.getGroup() + "' of '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set group '" + item.getGroup() + "' of '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
 				}
 			}
 
@@ -231,7 +235,7 @@ public class LocalFilesystemConnector {
 			if (userName != null) {
 				try {
 					final UserPrincipal user = lookupService.lookupPrincipalByName(userName);
-					Files.getFileAttributeView(path, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).setOwner(user);
+					Files.getFileAttributeView(path, FileOwnerAttributeView.class, LinkOption.NOFOLLOW_LINKS).setOwner(user);
 				} catch (final UserPrincipalNotFoundException e) {
 					if (!LocalFilesystemConnector.user_state.containsKey(item.getUser())) {
 						LocalFilesystemConnector.user_state.put(item.getUser(), true);
@@ -239,7 +243,7 @@ public class LocalFilesystemConnector {
 					}
 					throw new CloudsyncException("User '" + item.getUser() + "' on '" + item.getPath() + "' not found");
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set user '" + item.getUser() + "' of '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set user '" + item.getUser() + "' of '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
 				}
 			}
 
@@ -250,7 +254,7 @@ public class LocalFilesystemConnector {
 
 					Files.setPosixFilePermissions(path, toPermissions(permissions));
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'", e);
+					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
 				}
 			}
 		}
@@ -303,20 +307,35 @@ public class LocalFilesystemConnector {
 				}
 			}
 
-			final PosixFileAttributes attr = Files.readAttributes(path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-			final Long filesize = attr.size();
-			final FileTime creationTime = attr.creationTime();
-			final FileTime modifyTime = attr.lastModifiedTime();
-			final FileTime accessTime = attr.lastAccessTime();
-			final String group = attr.group().getName();
-			final String user = attr.owner().getName();
-			final Integer permissions = fromPermissions(attr.permissions());
+			BasicFileAttributes basic_attr = null;
+			String group = null;
+			String user = null;
+			Integer permissions = null;
+			
+			try{
+				final PosixFileAttributes attr = Files.readAttributes(path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+				group = attr.group().getName();
+				user = attr.owner().getName();
+				permissions = fromPermissions(attr.permissions());
+				basic_attr = attr;
+			}
+			catch( UnsupportedOperationException e){
+				
+				// TODO implement ACL and DOS attribute views
+				basic_attr = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+				user = Files.getOwner(path, LinkOption.NOFOLLOW_LINKS).getName();
+			}
 
-			if (attr.isDirectory()) {
+			final Long filesize = basic_attr.size();
+			final FileTime creationTime = basic_attr.creationTime();
+			final FileTime modifyTime = basic_attr.lastModifiedTime();
+			final FileTime accessTime = basic_attr.lastAccessTime();
+
+			if (basic_attr.isDirectory()) {
 				type = ItemType.FOLDER;
-			} else if (attr.isRegularFile()) {
+			} else if (basic_attr.isRegularFile()) {
 				type = ItemType.FILE;
-			} else if (attr.isSymbolicLink()) {
+			} else if (basic_attr.isSymbolicLink()) {
 				type = ItemType.LINK;
 			} else {
 				type = ItemType.UNKNOWN;
