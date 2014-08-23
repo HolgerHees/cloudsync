@@ -7,11 +7,11 @@ public class RemoteItem extends Item {
 	private Long remoteFilesize;
 	private FileTime remoteCreationtime;
 
-	public RemoteItem(String name, String remoteIdentifier, ItemType type, Long filesize, FileTime creationtime, FileTime modifytime, FileTime accesstime, String group, String user,
-			Integer permissions, Long remoteFilesize, FileTime remoteCreationtime) {
-
-		super(name, remoteIdentifier, type, filesize, creationtime, modifytime, accesstime, group, user, permissions);
-
+	
+	public RemoteItem(Long remoteFilesize, FileTime remoteCreationtime) {
+		
+		super();
+		
 		this.remoteFilesize = remoteFilesize;
 		this.remoteCreationtime = remoteCreationtime;
 	}

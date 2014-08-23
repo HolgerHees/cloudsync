@@ -63,6 +63,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	private final static Logger LOGGER = Logger.getLogger(RemoteGoogleDriveConnector.class.getName());
 
+	public final static String SEPARATOR = "/";
+
 	final static String REDIRECT_URL = "urn:ietf:wg:oauth:2.0:oob";
 	final static String FOLDER = "application/vnd.google-apps.folder";
 	final static String FILE = "application/octet-stream";
@@ -95,7 +97,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		cacheFiles = new HashMap<String, File>();
 		cacheParents = new HashMap<String, File>();
 
-		this.basePath = Helper.trim(options.getClientBasePath(), Item.SEPARATOR);
+		this.basePath = Helper.trim(options.getClientBasePath(), SEPARATOR);
 		this.backupName = backupName;
 		this.historyCount = history;
 		this.historyName = history > 0 ? backupName + " " + new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss").format(new Date()) : null;
@@ -156,7 +158,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		initService(structure);
 
-		String title = structure.encryptText(item.getName());
+		String title = structure.getLocalEncryptedTitle(item);
 		File driveItem;
 		int retryCount = 0;
 		do {
@@ -422,7 +424,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			data = structure.getLocalEncryptedBinary(item);
 		}
 
-		final String metadata = structure.encryptText(StringUtils.join(item.getMetadata(structure), ":"));
+		final String metadata = structure.getLocalEncryptMetadata(item);
 
 		final List<Property> properties = new ArrayList<Property>();
 
@@ -448,7 +450,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		final List<String> parts = new ArrayList<String>();
 
-		String[] metadata = null;
 		final List<Property> properties = driveItem.getProperties();
 		if (properties != null) {
 			for (final Property property : driveItem.getProperties()) {
@@ -460,11 +461,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 				parts.add(Integer.parseInt(key.substring(8)), property.getValue());
 			}
-
-			metadata = structure.decryptText(StringUtils.join(parts.toArray())).split(":", -1);
 		}
 
-		return Item.fromMetadata(structure.decryptText(driveItem.getTitle()), driveItem.getId(), driveItem.getMimeType().equals(FOLDER), metadata, driveItem.getFileSize(),
+		return structure.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), driveItem.getTitle(), StringUtils.join(parts.toArray()), driveItem.getFileSize(),
 				FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
 	}
 
@@ -527,12 +526,12 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			parentDriveTitles.add(0, parentDriveItem.getTitle());
 		} while (true);
 
-		return _getDriveFolder(basePath + Item.SEPARATOR + historyName + Item.SEPARATOR + StringUtils.join(parentDriveTitles, Item.SEPARATOR));
+		return _getDriveFolder(basePath + SEPARATOR + historyName + SEPARATOR + StringUtils.join(parentDriveTitles, SEPARATOR));
 	}
 
 	private File _getBackupFolder() throws CloudsyncException {
 
-		return _getDriveFolder(basePath + Item.SEPARATOR + backupName);
+		return _getDriveFolder(basePath + SEPARATOR + backupName);
 	}
 
 	private File _getDriveFolder(final String path) throws CloudsyncException {
@@ -540,7 +539,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		try {
 			File parentItem = service.files().get("root").execute();
 
-			final String[] folderNames = StringUtils.split(path, Item.SEPARATOR);
+			final String[] folderNames = StringUtils.split(path, SEPARATOR);
 
 			for (final String name : folderNames) {
 

@@ -3,7 +3,6 @@ package cloudsync.helper;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
@@ -14,6 +13,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +37,7 @@ import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
+import cloudsync.model.PermissionType;
 import cloudsync.model.RemoteItem;
 import cloudsync.model.SyncType;
 
@@ -54,7 +55,7 @@ public class Structure {
 	private final List<Item> duplicates;
 	private final DuplicateType duplicateFlag;
 	private final LinkType followlinks;
-	private final boolean nopermissions;
+	private final PermissionType permissionType;
 
 	private Path cacheFilePath;
 	private Path lockFilePath;
@@ -72,7 +73,7 @@ public class Structure {
 	}
 
 	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
-			final LinkType followlinks, final boolean nopermissions) {
+			final LinkType followlinks, final PermissionType permissionType) {
 
 		this.name = name;
 		this.localConnection = localConnection;
@@ -80,7 +81,7 @@ public class Structure {
 		this.crypt = crypt;
 		this.duplicateFlag = duplicateFlag;
 		this.followlinks = followlinks;
-		this.nopermissions = nopermissions;
+		this.permissionType = permissionType;
 
 		root = Item.getDummyRoot();
 		duplicates = new ArrayList<Item>();
@@ -183,7 +184,7 @@ public class Structure {
 	private void writeStructureToCSVPrinter(final CSVPrinter out, final Item parentItem) throws IOException {
 
 		for (final Item child : parentItem.getChildren().values()) {
-			out.printRecord(Arrays.asList(child.toArray()));
+			out.printRecord(Arrays.asList(child.toCSVArray()));
 			if (child.isType(ItemType.FOLDER)) {
 				writeStructureToCSVPrinter(out, child);
 			}
@@ -347,7 +348,7 @@ public class Structure {
 				localConnection.prepareUpload(this, item, duplicateFlag);
 				LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
 				localConnection.prepareParent(this, item);
-				localConnection.upload(this, item, duplicateFlag, nopermissions);
+				localConnection.upload(this, item, duplicateFlag, permissionType);
 			}
 
 			Collections.reverse(list);
@@ -403,7 +404,7 @@ public class Structure {
 			localConnection.prepareUpload(this, child, duplicateFlag);
 			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
 			if (perform) {
-				localConnection.upload(this, child, duplicateFlag, nopermissions);
+				localConnection.upload(this, child, duplicateFlag, permissionType);
 			}
 
 			if (child.isType(ItemType.FOLDER)) {
@@ -563,18 +564,6 @@ public class Structure {
 		return root;
 	}
 
-	public String decryptText(final String text) throws CloudsyncException {
-		return crypt.decryptText(text);
-	}
-
-	public String encryptText(final String text) throws CloudsyncException {
-		return crypt.encryptText(text);
-	}
-
-	public byte[] decryptData(final InputStream stream) throws CloudsyncException {
-		return crypt.decryptData(stream);
-	}
-
 	public byte[] getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
 		byte[] data = localConnection.getFileBinary(item);
 		if (data != null) {
@@ -584,7 +573,24 @@ public class Structure {
 		return data;
 	}
 
-	public InputStream getRemoteEncryptedBinary(final Item item) throws IOException, CloudsyncException {
-		return remoteConnection.get(this, item);
+	public String getLocalEncryptMetadata(final Item item) throws CloudsyncException {
+
+		String metadata = item.getMetadata(this);
+		return crypt.encryptText(metadata);
+	}
+
+	public String getLocalEncryptedTitle(final Item item) throws CloudsyncException {
+
+		return crypt.encryptText(item.getName());
+	}
+
+	public RemoteItem getRemoteItem(String remoteIdentifier, boolean isFolder, String encryptedTitle, String encryptedMetadata, Long remoteFilesize, FileTime remoteCreationtime)
+			throws CloudsyncException {
+
+		return Item.fromMetadata(remoteIdentifier, isFolder, crypt.decryptText(encryptedTitle), crypt.decryptText(encryptedMetadata), remoteFilesize, remoteCreationtime);
+	}
+
+	public byte[] getRemoteDecryptedBinary(final Item item) throws IOException, CloudsyncException {
+		return crypt.decryptData(remoteConnection.get(this, item));
 	}
 }

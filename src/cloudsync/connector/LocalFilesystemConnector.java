@@ -3,15 +3,22 @@ package cloudsync.connector;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntry.Builder;
+import java.nio.file.attribute.AclEntryFlag;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.DosFileAttributeView;
+import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
@@ -21,8 +28,10 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -39,6 +48,7 @@ import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
+import cloudsync.model.PermissionType;
 
 public class LocalFilesystemConnector {
 
@@ -59,20 +69,18 @@ public class LocalFilesystemConnector {
 
 	private static Map<PosixFilePermission, Integer> fromPermMapping = new HashMap<PosixFilePermission, Integer>();
 
-	private static Map<String, Boolean> group_state = new HashMap<String, Boolean>();
-	private static Map<String, Boolean> user_state = new HashMap<String, Boolean>();
+	private static Map<String, Boolean> principal_state = new HashMap<String, Boolean>();
 
 	private final String localPath;
 
 	public LocalFilesystemConnector(final String path) {
-		
-		if( path.startsWith(Item.SEPARATOR) ){
+
+		if (path.startsWith(Item.SEPARATOR)) {
 			localPath = Item.SEPARATOR + Helper.trim(path, Item.SEPARATOR);
-		}
-		else{
+		} else {
 			localPath = Helper.trim(path, Item.SEPARATOR);
 		}
-	
+
 		for (final Integer key : toPermMapping.keySet()) {
 
 			final PosixFilePermission perm = toPermMapping.get(key);
@@ -117,7 +125,7 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void upload(final Structure structure, final Item item, final DuplicateType duplicateFlag, final boolean nopermissions) throws CloudsyncException {
+	public void upload(final Structure structure, final Item item, final DuplicateType duplicateFlag, final PermissionType permissionType) throws CloudsyncException {
 
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
 
@@ -163,11 +171,10 @@ public class LocalFilesystemConnector {
 
 			if (item.isType(ItemType.LINK)) {
 
-				InputStream encryptedStream;
 				try {
 
-					encryptedStream = structure.getRemoteEncryptedBinary(item);
-					final String link = new String(structure.decryptData(encryptedStream));
+					final byte[] data = structure.getRemoteDecryptedBinary(item);
+					final String link = new String(data);
 					Files.createSymbolicLink(path, Paths.get(link));
 
 				} catch (final IOException e) {
@@ -176,19 +183,16 @@ public class LocalFilesystemConnector {
 				}
 			} else if (item.isType(ItemType.FILE)) {
 
-				InputStream encryptedStream;
 				try {
-					encryptedStream = structure.getRemoteEncryptedBinary(item);
-					final byte[] data = structure.decryptData(encryptedStream);
+					final byte[] data = structure.getRemoteDecryptedBinary(item);
 					if (!createChecksum(data).equals(item.getChecksum())) {
-
-						LOGGER.log(Level.WARNING, "restored filechecksum differs from the original filechecksum");
+						throw new CloudsyncException("restored filechecksum differs from the original filechecksum");
+					}
+					if (item.getFilesize() != data.length) {
+						throw new CloudsyncException("restored filesize differs from the original filesize");
 					}
 					final FileOutputStream fos = new FileOutputStream(path.toFile());
 					try {
-						if (item.getFilesize() != data.length) {
-							LOGGER.log(Level.WARNING, "restored filesize differs from the original filesize");
-						}
 						fos.write(data);
 					} finally {
 						fos.close();
@@ -212,55 +216,123 @@ public class LocalFilesystemConnector {
 			throw new CloudsyncException("Can't set create, modify and access time of " + item.getTypeName() + " '" + item.getPath() + "'", e);
 		}
 
-		if (!nopermissions) {
+		if (permissionType.equals(PermissionType.SET) || permissionType.equals(PermissionType.TRY)) {
 
 			final UserPrincipalLookupService lookupService = FileSystems.getDefault().getUserPrincipalLookupService();
-			final String groupName = item.getGroup();
-			if (groupName != null) {
+
+			Map<String, String[]> attributes = item.getAttributes();
+			for (String type : attributes.keySet()) {
+
+				GroupPrincipal group;
+				UserPrincipal principal;
+
 				try {
-					final GroupPrincipal group = lookupService.lookupPrincipalByGroupName(groupName);
-					Files.getFileAttributeView(path, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).setGroup(group);
-				} catch (final UserPrincipalNotFoundException e) {
-					if (!LocalFilesystemConnector.group_state.containsKey(item.getGroup())) {
-						LocalFilesystemConnector.group_state.put(item.getGroup(), true);
-						LOGGER.log(Level.WARNING, "group with name '" + item.getGroup() + "' not exists");
+					String[] values = attributes.get(type);
+
+					switch (type) {
+					case Item.ATTRIBUTE_POSIX:
+						PosixFileAttributeView posixView = Files.getFileAttributeView(path, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+						if (posixView != null) {
+							group = lookupService.lookupPrincipalByGroupName(values[0]);
+							posixView.setGroup(group);
+							principal = lookupService.lookupPrincipalByName(values[1]);
+							posixView.setOwner(principal);
+							if (values.length > 2)
+								posixView.setPermissions(toPermissions(Integer.parseInt(values[2])));
+						} else {
+							String msg = "Can't restore 'posix' permissions on '" + item.getPath() + "'. They are not supported.";
+							if (permissionType.equals(PermissionType.TRY))
+								LOGGER.log(Level.WARNING, msg);
+							else
+								throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
+						}
+						break;
+					case Item.ATTRIBUTE_DOS:
+						DosFileAttributeView dosView = Files.getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+						if (dosView != null) {
+							dosView.setArchive(Boolean.parseBoolean(values[0]));
+							dosView.setHidden(Boolean.parseBoolean(values[1]));
+							dosView.setReadOnly(Boolean.parseBoolean(values[2]));
+							dosView.setSystem(Boolean.parseBoolean(values[3]));
+						} else {
+							String msg = "Can't restore 'dos' permissions on '" + item.getPath() + "'. They are not supported.";
+							if (permissionType.equals(PermissionType.TRY))
+								LOGGER.log(Level.WARNING, msg);
+							else
+								throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
+						}
+						break;
+					case Item.ATTRIBUTE_ACL:
+						AclFileAttributeView aclView = Files.getFileAttributeView(path, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+						if (aclView != null) {
+							List<AclEntry> acls = aclView.getAcl();
+							for (int i = 0; i < values.length; i = i + 4) {
+
+								Builder aclEntryBuilder = AclEntry.newBuilder();
+
+								aclEntryBuilder.setType(AclEntryType.valueOf(values[i]));
+								aclEntryBuilder.setPrincipal(lookupService.lookupPrincipalByName(values[i + 1]));
+
+								Set<AclEntryFlag> flags = new HashSet<AclEntryFlag>();
+								for (String flag : StringUtils.splitPreserveAllTokens(values[i + 2], ",")) {
+									flags.add(AclEntryFlag.valueOf(flag));
+								}
+								if (flags.size() > 0)
+									aclEntryBuilder.setFlags(flags);
+
+								Set<AclEntryPermission> aclPermissions = new HashSet<AclEntryPermission>();
+								for (String flag : StringUtils.splitPreserveAllTokens(values[i + 3], ",")) {
+									aclPermissions.add(AclEntryPermission.valueOf(flag));
+								}
+								if (aclPermissions.size() > 0)
+									aclEntryBuilder.setPermissions(aclPermissions);
+								acls.add(aclEntryBuilder.build());
+							}
+							aclView.setAcl(acls);
+						} else {
+							String msg = "Can't restore 'acl' permissions on '" + item.getPath() + "'. They are not supported.";
+							if (permissionType.equals(PermissionType.TRY))
+								LOGGER.log(Level.WARNING, msg);
+							else
+								throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
+						}
+						break;
+					case Item.ATTRIBUTE_OWNER:
+						FileOwnerAttributeView ownerView = Files.getFileAttributeView(path, FileOwnerAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+						if (ownerView != null) {
+							principal = lookupService.lookupPrincipalByName(values[0]);
+							ownerView.setOwner(principal);
+						} else {
+							String msg = "Can't restore 'owner' permissions on '" + item.getPath() + "'. They are not supported.";
+							if (permissionType.equals(PermissionType.TRY))
+								LOGGER.log(Level.WARNING, msg);
+							else
+								throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
+						}
+						break;
 					}
-					throw new CloudsyncException("Group '" + item.getGroup() + "' on '" + item.getPath() + "' not found");
-				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set group '" + item.getGroup() + "' of '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
-				}
-			}
-
-			final String userName = item.getUser();
-			if (userName != null) {
-				try {
-					final UserPrincipal user = lookupService.lookupPrincipalByName(userName);
-					Files.getFileAttributeView(path, FileOwnerAttributeView.class, LinkOption.NOFOLLOW_LINKS).setOwner(user);
 				} catch (final UserPrincipalNotFoundException e) {
-					if (!LocalFilesystemConnector.user_state.containsKey(item.getUser())) {
-						LocalFilesystemConnector.user_state.put(item.getUser(), true);
-						LOGGER.log(Level.WARNING, "user with name '" + item.getUser() + "' not exists");
+					if (!LocalFilesystemConnector.principal_state.containsKey(e.getName())) {
+						LocalFilesystemConnector.principal_state.put(e.getName(), true);
+						LOGGER.log(Level.WARNING, "principal with name '" + e.getName() + "' not exists");
 					}
-					throw new CloudsyncException("User '" + item.getUser() + "' on '" + item.getPath() + "' not found");
+					String msg = "Principal '" + e.getName() + "' on '" + item.getPath() + "' not found.";
+					if (permissionType.equals(PermissionType.TRY))
+						LOGGER.log(Level.WARNING, msg);
+					else
+						throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
 				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set user '" + item.getUser() + "' of '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
-				}
-			}
-
-			final Integer permissions = item.getPermissions();
-			if (permissions != null) {
-
-				try {
-
-					Files.setPosixFilePermissions(path, toPermissions(permissions));
-				} catch (final IOException e) {
-					throw new CloudsyncException("Can't set permissions of " + item.getTypeName() + " '" + item.getPath() + "'\n  try to run with '--nopermissions'", e);
+					String msg = "Can't set permissions of '" + item.getPath() + "'.";
+					if (permissionType.equals(PermissionType.TRY))
+						LOGGER.log(Level.WARNING, msg);
+					else
+						throw new CloudsyncException(msg + "\n  try to run with '--permissions try'");
 				}
 			}
 		}
 	}
 
-	public File[] readFolder(final Item item) throws CloudsyncException {
+	public File[] readFolder(final Item item) {
 
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
 
@@ -307,25 +379,7 @@ public class LocalFilesystemConnector {
 				}
 			}
 
-			BasicFileAttributes basic_attr = null;
-			String group = null;
-			String user = null;
-			Integer permissions = null;
-			
-			try{
-				final PosixFileAttributes attr = Files.readAttributes(path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-				group = attr.group().getName();
-				user = attr.owner().getName();
-				permissions = fromPermissions(attr.permissions());
-				basic_attr = attr;
-			}
-			catch( UnsupportedOperationException e){
-				
-				// TODO implement ACL and DOS attribute views
-				basic_attr = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-				user = Files.getOwner(path, LinkOption.NOFOLLOW_LINKS).getName();
-			}
-
+			BasicFileAttributes basic_attr = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 			final Long filesize = basic_attr.size();
 			final FileTime creationTime = basic_attr.creationTime();
 			final FileTime modifyTime = basic_attr.lastModifiedTime();
@@ -341,7 +395,66 @@ public class LocalFilesystemConnector {
 				type = ItemType.UNKNOWN;
 			}
 
-			return new Item(file.getName(), null, type, filesize, creationTime, modifyTime, accessTime, group, user, permissions);
+			Map<String, String[]> attributes = new HashMap<String, String[]>();
+
+			PosixFileAttributeView posixView = Files.getFileAttributeView(path, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+			if (posixView != null) {
+				final PosixFileAttributes attr = posixView.readAttributes();
+				if (type.equals(ItemType.LINK)) {
+					attributes.put(Item.ATTRIBUTE_POSIX, new String[] { attr.group().getName(), attr.owner().getName() });
+				} else {
+					attributes.put(Item.ATTRIBUTE_POSIX, new String[] { attr.group().getName(), attr.owner().getName(), fromPermissions(attr.permissions()).toString() });
+				}
+			} else {
+
+				DosFileAttributeView dosView = Files.getFileAttributeView(path, DosFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+				if (dosView != null) {
+					final DosFileAttributes attr = dosView.readAttributes();
+					attributes.put(Item.ATTRIBUTE_DOS, new String[] { attr.isArchive() ? "1" : "0", attr.isHidden() ? "1" : "0", attr.isReadOnly() ? "1" : "0", attr.isSystem() ? "1" : "0" });
+				}
+			}
+
+			if (!type.equals(ItemType.LINK)) {
+
+				AclFileAttributeView aclView = Files.getFileAttributeView(path, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+				if (aclView != null) {
+					if (!attributes.containsKey(Item.ATTRIBUTE_POSIX))
+						attributes.put(Item.ATTRIBUTE_OWNER, new String[] { aclView.getOwner().getName() });
+
+					AclFileAttributeView parentAclView = Files.getFileAttributeView(path.getParent(), AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+
+					List<AclEntry> aclList = getLocalAclEntries(type, parentAclView.getAcl(), aclView.getAcl());
+					if (aclList.size() > 0) {
+						List<String> aclData = new ArrayList<String>();
+						for (AclEntry acl : aclList) {
+							List<String> flags = new ArrayList<String>();
+							for (AclEntryFlag flag : acl.flags()) {
+								flags.add(flag.name());
+							}
+							List<String> permissions = new ArrayList<String>();
+							for (AclEntryPermission permission : acl.permissions()) {
+								permissions.add(permission.name());
+							}
+
+							aclData.add(acl.type().name());
+							aclData.add(acl.principal().getName());
+							aclData.add(StringUtils.join(flags, ","));
+							aclData.add(StringUtils.join(permissions, ","));
+						}
+						String[] arr = new String[aclData.size()];
+						arr = aclData.toArray(arr);
+						attributes.put(Item.ATTRIBUTE_ACL, arr);
+					}
+				} else if (!attributes.containsKey(Item.ATTRIBUTE_POSIX)) {
+
+					FileOwnerAttributeView ownerView = Files.getFileAttributeView(path, FileOwnerAttributeView.class, LinkOption.NOFOLLOW_LINKS);
+					if (ownerView != null) {
+						attributes.put(Item.ATTRIBUTE_OWNER, new String[] { ownerView.getOwner().getName() });
+					}
+				}
+			}
+
+			return Item.fromLocalData(file.getName(), type, filesize, creationTime, modifyTime, accessTime, attributes);
 
 		} catch (final NoSuchFileException e) {
 
@@ -351,6 +464,64 @@ public class LocalFilesystemConnector {
 
 			throw new CloudsyncException("Can't read attributes of '" + file.getAbsolutePath() + "'", e);
 		}
+	}
+
+	private List<AclEntry> getLocalAclEntries(ItemType type, List<AclEntry> parentAclList, List<AclEntry> childAclList) {
+
+		List<AclEntry> aclList = new ArrayList<AclEntry>();
+
+		for (AclEntry childEntry : childAclList) {
+
+			boolean found = false;
+			for (AclEntry parentEntry : parentAclList) {
+
+				if (!parentEntry.type().equals(childEntry.type()))
+					continue;
+				if (!parentEntry.principal().equals(childEntry.principal()))
+					continue;
+				if (!parentEntry.permissions().equals(childEntry.permissions()))
+					continue;
+				if (!parentEntry.flags().equals(childEntry.flags())) {
+					if (parentEntry.flags().contains(AclEntryFlag.INHERIT_ONLY)) {
+						found = true;
+						break;
+					} else {
+						if (type.equals(ItemType.FOLDER)) {
+							if (parentEntry.flags().contains(AclEntryFlag.DIRECTORY_INHERIT)) {
+								found = true;
+								break;
+							}
+						} else {
+							if (parentEntry.flags().contains(AclEntryFlag.FILE_INHERIT)) {
+								found = true;
+								break;
+							}
+						}
+					}
+					continue;
+				}
+				found = true;
+				break;
+			}
+
+			if (found)
+				continue;
+
+			// System.out.println("CHILD: "+childEntry.toString());
+			/*
+			 * System.out.println("\n\n");
+			 * System.out.println("CHILD: "+childEntry.toString());
+			 * 
+			 * for(AclEntry parentEntry : parentAclList){
+			 * 
+			 * System.out.println("PARENT: "+parentEntry.toString()); }
+			 * 
+			 * System.out.println("\n\n");
+			 */
+
+			aclList.add(childEntry);
+		}
+		return aclList;
 	}
 
 	private boolean exists(final Path path) {

@@ -23,6 +23,7 @@ import cloudsync.exceptions.UsageException;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.LinkType;
+import cloudsync.model.PermissionType;
 import cloudsync.model.SyncType;
 
 public class CmdOptions {
@@ -44,7 +45,7 @@ public class CmdOptions {
 	private String cachefilePath;
 	private String lockfilePath;
 	private String pidfilePath;
-	private boolean nopermissions;
+	private PermissionType permissions;
 	private boolean nocache;
 	private boolean forcestart;
 	private boolean testrun;
@@ -154,8 +155,14 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Don't restore permission, group and owner attributes");
-		OptionBuilder.withLongOpt("nopermissions");
+		description = "Behavior how to handle acl permissions during restore\n";
+		description += "<set> - set all permissions and ownerships - (default)\n";
+		description += "<ignore> - ignores all permissions and ownerships\n";
+		description += "<try> - ignores invalid and not assignable permissions and ownerships\n";
+		OptionBuilder.withArgName("set|ignore|try");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription(description);
+		OptionBuilder.withLongOpt("permissions");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -247,10 +254,11 @@ public class CmdOptions {
 		followlinks = LinkType.fromName(value);
 		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
 		duplicate = DuplicateType.fromName(value);
+		value = getOptionValue(cmd, "permissions",PermissionType.SET.getName());
+		permissions = PermissionType.fromName(value);
 
 		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
 
-		nopermissions = cmd.hasOption("nopermissions");
 		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
 		testrun = cmd.hasOption("test");
@@ -272,7 +280,7 @@ public class CmdOptions {
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid) {
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || permissions == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
@@ -291,6 +299,9 @@ public class CmdOptions {
 				}
 				if (duplicate == null) {
 					messages.add(" Wrong --duplicate behavior set");
+				}
+				if (permissions == null) {
+					messages.add(" Wrong --permissions behavior set");
 				}
 				if (config == null) {
 					messages.add(" Missing --config <path>");
@@ -364,8 +375,8 @@ public class CmdOptions {
 		return logfilePath;
 	}
 
-	public boolean getNoPermission() {
-		return nopermissions;
+	public PermissionType getPermissionType() {
+		return permissions;
 	}
 
 	public boolean getNoCache() {

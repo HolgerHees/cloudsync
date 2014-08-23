@@ -89,7 +89,7 @@ public class Cloudsync {
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getNoPermission());
+			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
 			structure.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
