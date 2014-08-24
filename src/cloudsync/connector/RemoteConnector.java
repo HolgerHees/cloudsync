@@ -5,11 +5,14 @@ import java.nio.file.NoSuchFileException;
 import java.util.List;
 
 import cloudsync.exceptions.CloudsyncException;
+import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
 import cloudsync.model.RemoteItem;
 
 public interface RemoteConnector {
+
+	public void init(String backupName, CmdOptions options) throws CloudsyncException;
 
 	public List<RemoteItem> readFolder(Structure structure, Item parentItem) throws CloudsyncException;
 

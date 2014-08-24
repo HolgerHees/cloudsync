@@ -51,6 +51,7 @@ public class CmdOptions {
 	private boolean testrun;
 	private LinkType followlinks;
 	private DuplicateType duplicate;
+	private String remoteConnector;
 
 	public CmdOptions(final String[] args) {
 
@@ -246,6 +247,8 @@ public class CmdOptions {
 
 		name = getOptionValue(cmd, "name", null);
 
+		remoteConnector = prop.getProperty("REMOTE_CONNECTOR");
+
 		passphrase = prop.getProperty("PASSPHRASE");
 		if (StringUtils.isEmpty(passphrase)) {
 			throw new CloudsyncException("'PASSPHRASE' is not configured");
@@ -254,7 +257,7 @@ public class CmdOptions {
 		followlinks = LinkType.fromName(value);
 		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
 		duplicate = DuplicateType.fromName(value);
-		value = getOptionValue(cmd, "permissions",PermissionType.SET.getName());
+		value = getOptionValue(cmd, "permissions", PermissionType.SET.getName());
 		permissions = PermissionType.fromName(value);
 
 		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
@@ -280,7 +283,8 @@ public class CmdOptions {
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || permissions == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid) {
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || permissions == null || !baseValid || config == null || !configValid || !logfileValid
+				|| !cachefileValid) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
@@ -417,5 +421,9 @@ public class CmdOptions {
 
 	public String getPassphrase() {
 		return passphrase;
+	}
+
+	public String getRemoteConnector() {
+		return remoteConnector;
 	}
 }

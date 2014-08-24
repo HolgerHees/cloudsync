@@ -28,6 +28,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
+import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Helper;
 import cloudsync.helper.Structure;
 import cloudsync.model.Item;
@@ -81,23 +82,29 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private GoogleCredential credential;
 	private Drive service;
 
-	private final Path clientTokenPath;
+	private Path clientTokenPath;
 
-	private final Map<String, File> cacheFiles;
-	private final Map<String, File> cacheParents;
+	private Map<String, File> cacheFiles;
+	private Map<String, File> cacheParents;
 
-	private final String basePath;
-	private final String backupName;
-	private final String historyName;
-	private final Integer historyCount;
+	private String basePath;
+	private String backupName;
+	private String historyName;
+	private Integer historyCount;
 	private long lastValidate = 0;
 
-	public RemoteGoogleDriveConnector(RemoteGoogleDriveOptions options, final String backupName, final Integer history) throws CloudsyncException {
+	public RemoteGoogleDriveConnector() {
+	}
+
+	public void init(String backupName, CmdOptions options) throws CloudsyncException {
+
+		RemoteGoogleDriveOptions googleDriveOptions = new RemoteGoogleDriveOptions(options, backupName);
+		Integer history = options.getHistory();
 
 		cacheFiles = new HashMap<String, File>();
 		cacheParents = new HashMap<String, File>();
 
-		this.basePath = Helper.trim(options.getClientBasePath(), SEPARATOR);
+		this.basePath = Helper.trim(googleDriveOptions.getClientBasePath(), SEPARATOR);
 		this.backupName = backupName;
 		this.historyCount = history;
 		this.historyName = history > 0 ? backupName + " " + new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss").format(new Date()) : null;
@@ -105,16 +112,16 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		final HttpTransport httpTransport = new NetHttpTransport();
 		final JsonFactory jsonFactory = new JacksonFactory();
 
-		final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, options.getClientID(), options.getClientSecret(), Arrays.asList(DriveScopes.DRIVE))
-				.setAccessType("offline").setApprovalPrompt("auto").build();
+		final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, googleDriveOptions.getClientID(), googleDriveOptions.getClientSecret(),
+				Arrays.asList(DriveScopes.DRIVE)).setAccessType("offline").setApprovalPrompt("auto").build();
 
-		this.clientTokenPath = Paths.get(options.getClientTokenPath());
+		this.clientTokenPath = Paths.get(googleDriveOptions.getClientTokenPath());
 
 		try {
 			final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile()) : null;
 
-			credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory()).setClientSecrets(options.getClientID(), options.getClientSecret())
-					.build();
+			credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory())
+					.setClientSecrets(googleDriveOptions.getClientID(), googleDriveOptions.getClientSecret()).build();
 
 			if (StringUtils.isEmpty(clientTokenAsJson)) {
 

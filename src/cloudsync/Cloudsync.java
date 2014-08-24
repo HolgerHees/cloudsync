@@ -14,8 +14,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.connector.LocalFilesystemConnector;
-import cloudsync.connector.RemoteGoogleDriveConnector;
-import cloudsync.connector.RemoteGoogleDriveOptions;
+import cloudsync.connector.RemoteConnector;
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.exceptions.UsageException;
 import cloudsync.helper.CmdOptions;
@@ -72,10 +71,22 @@ public class Cloudsync {
 		String name = options.getName();
 
 		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options.getPath());
-		final RemoteGoogleDriveConnector remoteConnection = new RemoteGoogleDriveConnector(new RemoteGoogleDriveOptions(options, name), name, options.getHistory());
 
 		Structure structure = null;
+
 		try {
+
+			String remoteConnectorName = options.getRemoteConnector();
+			RemoteConnector remoteConnector = null;
+			try {
+				remoteConnector = (RemoteConnector) Class.forName("cloudsync.connector.Remote" + remoteConnectorName + "Connector").newInstance();
+			} catch (IllegalAccessException e) {
+			} catch (InstantiationException e) {
+			} catch (ClassNotFoundException e) {
+				throw new CloudsyncException("Remote connector '" + remoteConnectorName + "' not found", e);
+			}
+
+			remoteConnector.init(name, options);
 
 			final long start = System.currentTimeMillis();
 
@@ -89,7 +100,7 @@ public class Cloudsync {
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			structure = new Structure(name, localConnection, remoteConnection, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
+			structure = new Structure(name, localConnection, remoteConnector, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
 			structure.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {

@@ -1,17 +1,20 @@
 # your master password
 PASSPHRASE=
 
+# use google drive as target
+REMOTE_CONNECTOR=GoogleDrive
+
 # google drive client id
-REMOTE_CLIENT_ID=
+GOOGLE_DRIVE_CLIENT_ID=
 
 # google drive client secret
-REMOTE_CLIENT_SECRET=
+GOOGLE_DRIVE_CLIENT_SECRET=
 
 # path to store the curently used client token
-REMOTE_CLIENT_TOKEN_PATH=./.cloudsync.token
+GOOGLE_DRIVE_CLIENT_TOKEN_PATH=./.cloudsync.token
 
 # backup target on the remote server
-REMOTE_DIR=/backup
+GOOGLE_DRIVE_DIR=/backup
 
 ### following options are also setable via command line. values from there are preferred ###
 ### {name} in *FILE properties is replaced with the currently used backup name ###
