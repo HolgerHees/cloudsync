@@ -19,7 +19,7 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.exceptions.UsageException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Crypt;
-import cloudsync.helper.Structure;
+import cloudsync.helper.Handler;
 import cloudsync.logging.LogconsoleHandler;
 import cloudsync.logging.LogfileFormatter;
 import cloudsync.logging.LogfileHandler;
@@ -72,7 +72,7 @@ public class Cloudsync {
 
 		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options.getPath());
 
-		Structure structure = null;
+		Handler handler = null;
 
 		try {
 
@@ -100,21 +100,21 @@ public class Cloudsync {
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			structure = new Structure(name, localConnection, remoteConnector, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
-			structure.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
+			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
+			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
 			case BACKUP:
-				structure.backup(!options.isTestRun(), includePatterns, excludePatterns);
+				handler.backup(!options.isTestRun(), includePatterns, excludePatterns);
 				break;
 			case RESTORE:
-				structure.restore(!options.isTestRun(), includePatterns, excludePatterns);
+				handler.restore(!options.isTestRun(), includePatterns, excludePatterns);
 				break;
 			case LIST:
-				structure.list(includePatterns, excludePatterns);
+				handler.list(includePatterns, excludePatterns);
 				break;
 			case CLEAN:
-				structure.clean();
+				handler.clean();
 				break;
 			}
 
@@ -124,8 +124,8 @@ public class Cloudsync {
 		} finally {
 
 			try {
-				if (structure != null)
-					structure.finalize();
+				if (handler != null)
+					handler.finalize();
 			} catch (CloudsyncException e) {
 				throw e;
 			}

@@ -16,7 +16,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.helper.Structure;
+import cloudsync.helper.Handler;
 
 public class Item {
 
@@ -96,14 +96,14 @@ public class Item {
 		return item;
 	}
 
-	public String getMetadata(Structure structure) throws CloudsyncException {
+	public String getMetadata(Handler handler) throws CloudsyncException {
 
 		if (needsMetadataUpgrade) {
 
 			if (checksum == null) {
 				try {
 					// force a checksum update
-					structure.getLocalEncryptedBinary(this);
+					handler.getLocalEncryptedBinary(this);
 				} catch (NoSuchFileException e) {
 				}
 			}

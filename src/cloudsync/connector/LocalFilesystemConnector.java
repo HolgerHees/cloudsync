@@ -42,8 +42,8 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
+import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
-import cloudsync.helper.Structure;
 import cloudsync.model.DuplicateType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
@@ -88,7 +88,7 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void prepareUpload(final Structure structure, final Item item, final DuplicateType duplicateFlag) {
+	public void prepareUpload(final Handler handler, final Item item, final DuplicateType duplicateFlag) {
 
 		if (!duplicateFlag.equals(DuplicateType.RENAME)) {
 			return;
@@ -109,7 +109,7 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void prepareParent(Structure structure, Item item) throws CloudsyncException {
+	public void prepareParent(Handler handler, Item item) throws CloudsyncException {
 
 		if (item.getParent() != null) {
 
@@ -125,7 +125,7 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void upload(final Structure structure, final Item item, final DuplicateType duplicateFlag, final PermissionType permissionType) throws CloudsyncException {
+	public void upload(final Handler handler, final Item item, final DuplicateType duplicateFlag, final PermissionType permissionType) throws CloudsyncException {
 
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
 
@@ -173,7 +173,7 @@ public class LocalFilesystemConnector {
 
 				try {
 
-					final byte[] data = structure.getRemoteDecryptedBinary(item);
+					final byte[] data = handler.getRemoteDecryptedBinary(item);
 					final String link = new String(data);
 					Files.createSymbolicLink(path, Paths.get(link));
 
@@ -184,7 +184,7 @@ public class LocalFilesystemConnector {
 			} else if (item.isType(ItemType.FILE)) {
 
 				try {
-					final byte[] data = structure.getRemoteDecryptedBinary(item);
+					final byte[] data = handler.getRemoteDecryptedBinary(item);
 					if (!createChecksum(data).equals(item.getChecksum())) {
 						throw new CloudsyncException("restored filechecksum differs from the original filechecksum");
 					}

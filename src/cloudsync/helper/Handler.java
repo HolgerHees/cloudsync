@@ -41,9 +41,9 @@ import cloudsync.model.PermissionType;
 import cloudsync.model.RemoteItem;
 import cloudsync.model.SyncType;
 
-public class Structure {
+public class Handler {
 
-	private final static Logger LOGGER = Logger.getLogger(Structure.class.getName());
+	private final static Logger LOGGER = Logger.getLogger(Handler.class.getName());
 
 	private final String name;
 
@@ -72,7 +72,7 @@ public class Structure {
 		private int skip = 0;
 	}
 
-	public Structure(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
+	public Handler(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
 			final LinkType followlinks, final PermissionType permissionType) {
 
 		this.name = name;
@@ -467,11 +467,6 @@ public class Structure {
 					remoteParentItem.addChild(remoteChildItem);
 					status.create++;
 				} else {
-
-					// echo item.getFileSize() +" "+
-					// this.structure[key].getFileSize()+"\n";
-					// echo item.getModifyTime() +" "+
-					// this.structure[key].getModifyTime()+"\n";
 
 					if (remoteChildItem.isTypeChanged(localChildItem)) {
 						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + backupPath + "'");

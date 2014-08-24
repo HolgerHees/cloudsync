@@ -29,8 +29,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
+import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
-import cloudsync.helper.Structure;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
@@ -161,11 +161,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void upload(final Structure structure, final Item item) throws CloudsyncException, NoSuchFileException {
+	public void upload(final Handler handler, final Item item) throws CloudsyncException, NoSuchFileException {
 
-		initService(structure);
+		initService(handler);
 
-		String title = structure.getLocalEncryptedTitle(item);
+		String title = handler.getLocalEncryptedTitle(item);
 		File driveItem;
 		int retryCount = 0;
 		do {
@@ -177,7 +177,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				driveItem = new File();
 				driveItem.setTitle(title);
 				driveItem.setParents(Arrays.asList(parentReference));
-				final byte[] data = _prepareDriveItem(driveItem, item, structure, true);
+				final byte[] data = _prepareDriveItem(driveItem, item, handler, true);
 				if (data == null) {
 					driveItem = service.files().insert(driveItem).execute();
 				} else {
@@ -204,7 +204,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 						LOGGER.log(Level.WARNING, getExceptionMessage(e) + "found uploaded item - try to update");
 
 						item.setRemoteIdentifier(driveItem.getId());
-						update(structure, item, true);
+						update(handler, item, true);
 						return;
 					}
 					LOGGER.log(Level.WARNING, getExceptionMessage(e) + "item not uploaded - retry " + (i + 1) + "/" + MIN_SEARCH_RETRIES + " - wait " + MIN_SEARCH_BREAK + " ms");
@@ -216,9 +216,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void update(final Structure structure, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
+	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
-		initService(structure);
+		initService(handler);
 
 		int retryCount = 0;
 		do {
@@ -244,7 +244,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					}
 				}
 				File driveItem = new File();
-				final byte[] data = _prepareDriveItem(driveItem, item, structure, with_filedata);
+				final byte[] data = _prepareDriveItem(driveItem, item, handler, with_filedata);
 				if (data == null) {
 					driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
 				} else {
@@ -271,9 +271,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void remove(final Structure structure, final Item item) throws CloudsyncException {
+	public void remove(final Handler handler, final Item item) throws CloudsyncException {
 
-		initService(structure);
+		initService(handler);
 
 		int retryCount = 0;
 		do {
@@ -303,9 +303,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public InputStream get(final Structure structure, final Item item) throws CloudsyncException {
+	public InputStream get(final Handler handler, final Item item) throws CloudsyncException {
 
-		initService(structure);
+		initService(handler);
 
 		int retryCount = 0;
 		do {
@@ -323,9 +323,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public List<RemoteItem> readFolder(final Structure structure, final Item parentItem) throws CloudsyncException {
+	public List<RemoteItem> readFolder(final Handler handler, final Item parentItem) throws CloudsyncException {
 
-		initService(structure);
+		initService(handler);
 
 		int retryCount = 0;
 		do {
@@ -335,7 +335,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				final List<RemoteItem> child_items = new ArrayList<RemoteItem>();
 				final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
 				for (final File child : childDriveItems) {
-					child_items.add(_prepareBackupItem(child, structure));
+					child_items.add(_prepareBackupItem(child, handler));
 				}
 				return child_items;
 			} catch (final IOException e) {
@@ -345,9 +345,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	}
 
 	@Override
-	public void cleanHistory(final Structure structure) throws CloudsyncException {
+	public void cleanHistory(final Handler handler) throws CloudsyncException {
 
-		initService(structure);
+		initService(handler);
 
 		final File backupDriveFolder = _getBackupFolder();
 		final File parentDriveItem = _getDriveFolder(basePath);
@@ -421,17 +421,17 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return child_items;
 	}
 
-	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Structure structure, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
+	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
 		byte[] data = null;
 		if (with_filedata) {
 
 			// "getLocalEncryptedBinary" should be called before "getMetadata"
 			// to generate the needed checksum
-			data = structure.getLocalEncryptedBinary(item);
+			data = handler.getLocalEncryptedBinary(item);
 		}
 
-		final String metadata = structure.getLocalEncryptMetadata(item);
+		final String metadata = handler.getLocalEncryptMetadata(item);
 
 		final List<Property> properties = new ArrayList<Property>();
 
@@ -453,7 +453,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return data;
 	}
 
-	private RemoteItem _prepareBackupItem(final File driveItem, final Structure structure) throws CloudsyncException {
+	private RemoteItem _prepareBackupItem(final File driveItem, final Handler handler) throws CloudsyncException {
 
 		final List<String> parts = new ArrayList<String>();
 
@@ -470,7 +470,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			}
 		}
 
-		return structure.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), driveItem.getTitle(), StringUtils.join(parts.toArray()), driveItem.getFileSize(),
+		return handler.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), driveItem.getTitle(), StringUtils.join(parts.toArray()), driveItem.getFileSize(),
 				FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
 	}
 
@@ -664,7 +664,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return "ioexception: '" + msg + "' - ";
 	}
 
-	public void initService(Structure structure) throws CloudsyncException {
+	public void initService(Handler handler) throws CloudsyncException {
 
 		if (service != null)
 			return;
@@ -678,7 +678,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		} catch (IOException e) {
 			throw new CloudsyncException("couldn't refresh google drive token");
 		}
-		structure.getRootItem().setRemoteIdentifier(_getBackupFolder().getId());
+		handler.getRootItem().setRemoteIdentifier(_getBackupFolder().getId());
 	}
 
 	private void refreshCredential() throws IOException {

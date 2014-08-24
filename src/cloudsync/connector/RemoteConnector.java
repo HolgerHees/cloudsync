@@ -6,7 +6,7 @@ import java.util.List;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
-import cloudsync.helper.Structure;
+import cloudsync.helper.Handler;
 import cloudsync.model.Item;
 import cloudsync.model.RemoteItem;
 
@@ -14,15 +14,15 @@ public interface RemoteConnector {
 
 	public void init(String backupName, CmdOptions options) throws CloudsyncException;
 
-	public List<RemoteItem> readFolder(Structure structure, Item parentItem) throws CloudsyncException;
+	public List<RemoteItem> readFolder(Handler handler, Item parentItem) throws CloudsyncException;
 
-	public void upload(Structure structure, Item item) throws CloudsyncException, NoSuchFileException;
+	public void upload(Handler handler, Item item) throws CloudsyncException, NoSuchFileException;
 
-	public void update(Structure structure, Item item, boolean with_filedata) throws CloudsyncException, NoSuchFileException;
+	public void update(Handler handler, Item item, boolean with_filedata) throws CloudsyncException, NoSuchFileException;
 
-	public void remove(Structure structure, Item item) throws CloudsyncException;
+	public void remove(Handler handler, Item item) throws CloudsyncException;
 
-	public InputStream get(Structure structure, Item item) throws CloudsyncException;
+	public InputStream get(Handler handler, Item item) throws CloudsyncException;
 
-	public void cleanHistory(Structure structure) throws CloudsyncException;
+	public void cleanHistory(Handler handler) throws CloudsyncException;
 }
