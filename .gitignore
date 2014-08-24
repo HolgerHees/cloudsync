@@ -1,6 +1,5 @@
 .settings*
 .classpath
 .cloudsync*
-.project
 eclipse*
 config/cloudsync.config
