@@ -1,6 +1,6 @@
 .settings*
 config/cloudsync.config
-lib/*
+lib*
 target*
 .classpath
 .project
