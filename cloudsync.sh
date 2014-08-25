@@ -11,6 +11,6 @@ if [[ "$VERSION" < 1.7 ]]; then
     echo Found unsupported java version. Please install jdk 7 or newer
 else
     export LANG=$LANG
-    CMD="$JAVA -cp "./lib/*:./lib/drive/*:./lib/drive/libs/*" cloudsync.Cloudsync $*"
+    CMD="$JAVA -cp \"./lib/*\" cloudsync.Cloudsync $*"
     eval $CMD
 fi
