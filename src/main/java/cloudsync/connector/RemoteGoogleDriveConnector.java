@@ -195,13 +195,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			} catch (final NoSuchFileException e) {
 				throw e;
 			} catch (final IOException e) {
-				if( parentDriveItem != null ){
+				if (parentDriveItem != null) {
 					for (int i = 0; i < MIN_SEARCH_RETRIES; i++) {
 						driveItem = _searchDriveItem(item.getParent(), title);
 						if (driveItem != null) {
-	
+
 							LOGGER.log(Level.WARNING, getExceptionMessage(e) + "found uploaded item - try to update");
-	
+
 							item.setRemoteIdentifier(driveItem.getId());
 							update(handler, item, true);
 							return;
@@ -355,40 +355,36 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		try {
 			refreshCredential();
 
-			final List<File> child_items = _readFolder(parentDriveItem.getId());
+			final List<File> child_items = new ArrayList<File>();
+			for (File file : _readFolder(parentDriveItem.getId())) {
 
-			Collections.sort(child_items, new Comparator<File>() {
-
-				@Override
-				public int compare(final File o1, final File o2) {
-
-					final long v1 = o1.getCreatedDate().getValue();
-					final long v2 = o2.getCreatedDate().getValue();
-
-					if (v1 < v2) {
-						return 1;
-					}
-					if (v1 > v2) {
-						return -1;
-					}
-					return 0;
-				}
-			});
-
-			int count = 0;
-			for (int i = 0; i < child_items.size(); i++) {
-
-				File childDriveFolder = child_items.get(i);
-
-				if (backupDriveFolder.getId().equals(childDriveFolder.getId()) || !childDriveFolder.getTitle().startsWith(backupDriveFolder.getTitle())) {
+				if (backupDriveFolder.getId().equals(file.getId()) || !file.getTitle().startsWith(backupDriveFolder.getTitle())) {
 					continue;
 				}
+				child_items.add(file);
+			}
 
-				if (count < historyCount) {
-					count++;
-				} else {
-					LOGGER.log(Level.FINE, "cleanup history folder '" + childDriveFolder.getTitle() + "'");
-					service.files().delete(child_items.get(i).getId()).execute();
+			if (child_items.size() > historyCount) {
+				Collections.sort(child_items, new Comparator<File>() {
+
+					@Override
+					public int compare(final File o1, final File o2) {
+
+						final long v1 = o1.getCreatedDate().getValue();
+						final long v2 = o2.getCreatedDate().getValue();
+
+						if (v1 < v2)
+							return 1;
+						if (v1 > v2)
+							return -1;
+						return 0;
+					}
+				});
+
+				for (File file : child_items.subList(historyCount, child_items.size())) {
+
+					LOGGER.log(Level.FINE, "cleanup history folder '" + file.getTitle() + "'");
+					service.files().delete(file.getId()).execute();
 				}
 			}
 		} catch (final IOException e) {
@@ -503,13 +499,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		try {
 			driveItem = service.files().get(id).execute();
-			
-		} catch( HttpResponseException e ){
-			
-			if( e.getStatusCode() == 404 ){
+
+		} catch (HttpResponseException e) {
+
+			if (e.getStatusCode() == 404) {
 				throw new CloudsyncException("Couldn't find remote item '" + item.getPath() + "' [" + id + "]\ntry to run with --nocache");
 			}
-			
+
 			throw e;
 		}
 
