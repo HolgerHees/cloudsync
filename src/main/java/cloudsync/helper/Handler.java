@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -325,7 +324,8 @@ public class Handler {
 					break;
 				}
 			}
-			if( !found ) return false;
+			if (!found)
+				return false;
 		}
 
 		if (excludePatterns != null) {
@@ -401,7 +401,7 @@ public class Handler {
 
 			String path = child.getPath();
 
-			if (checkPattern(path, includePatterns, excludePatterns)){
+			if (checkPattern(path, includePatterns, excludePatterns)) {
 
 				localConnection.prepareUpload(this, child, duplicateFlag);
 				LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
@@ -409,7 +409,7 @@ public class Handler {
 					localConnection.upload(this, child, duplicateFlag, permissionType);
 				}
 			}
-			
+
 			if (child.isType(ItemType.FOLDER)) {
 				restore(perform, includePatterns, excludePatterns, child);
 			}
@@ -564,10 +564,8 @@ public class Handler {
 
 	public byte[] getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
 		byte[] data = localConnection.getFileBinary(item);
-		if (data != null) {
-			item.setChecksum(DigestUtils.md5Hex(data));
+		if (data != null)
 			data = crypt.getEncryptedBinary(item.getName(), data, item);
-		}
 		return data;
 	}
 

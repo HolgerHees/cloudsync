@@ -174,6 +174,10 @@ public class LocalFilesystemConnector {
 				try {
 
 					final byte[] data = handler.getRemoteDecryptedBinary(item);
+					// if (!createChecksum(data).equals(item.getChecksum())) {
+					// throw new
+					// CloudsyncException("restored filechecksum differs from the original filechecksum");
+					// }
 					final String link = new String(data);
 					Files.createSymbolicLink(path, Paths.get(link));
 
@@ -556,7 +560,7 @@ public class LocalFilesystemConnector {
 		return permissions;
 	}
 
-	public String createChecksum(final byte[] data) {
+	private static String createChecksum(final byte[] data) {
 
 		return DigestUtils.md5Hex(data);
 	}
@@ -568,7 +572,9 @@ public class LocalFilesystemConnector {
 		try {
 			if (item.isType(ItemType.LINK)) {
 
-				return Files.readSymbolicLink(file.toPath()).toString().getBytes();
+				byte[] data = Files.readSymbolicLink(file.toPath()).toString().getBytes();
+				item.setChecksum(createChecksum(data));
+				return data;
 			} else if (item.isType(ItemType.FILE)) {
 
 				byte[] data = Files.readAllBytes(file.toPath());
