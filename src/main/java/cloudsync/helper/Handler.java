@@ -318,11 +318,14 @@ public class Handler {
 	private boolean checkPattern(String path, String[] includePatterns, String[] excludePatterns) {
 
 		if (includePatterns != null) {
+			boolean found = false;
 			for (String includePattern : includePatterns) {
-				if (!path.matches("^" + includePattern + "$")) {
-					return false;
+				if (path.matches("^" + includePattern + "$")) {
+					found = true;
+					break;
 				}
 			}
+			if( !found ) return false;
 		}
 
 		if (excludePatterns != null) {
@@ -398,15 +401,15 @@ public class Handler {
 
 			String path = child.getPath();
 
-			if (!checkPattern(path, includePatterns, excludePatterns))
-				continue;
+			if (checkPattern(path, includePatterns, excludePatterns)){
 
-			localConnection.prepareUpload(this, child, duplicateFlag);
-			LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
-			if (perform) {
-				localConnection.upload(this, child, duplicateFlag, permissionType);
+				localConnection.prepareUpload(this, child, duplicateFlag);
+				LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
+				if (perform) {
+					localConnection.upload(this, child, duplicateFlag, permissionType);
+				}
 			}
-
+			
 			if (child.isType(ItemType.FOLDER)) {
 				restore(perform, includePatterns, excludePatterns, child);
 			}

@@ -43,12 +43,12 @@ import com.google.api.client.googleapis.media.MediaHttpUploader.UploadState;
 import com.google.api.client.googleapis.media.MediaHttpUploaderProgressListener;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpResponse;
+import com.google.api.client.http.HttpResponseException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonGenerator;
-import com.google.api.client.json.JsonParser;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
@@ -128,23 +128,20 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				final String url = flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URL).build();
 				System.out.println("Please open the following URL in your browser, copy the authorization code and enter below.");
 				System.out.println("\n" + url + "\n");
-				final BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-				final String code = br.readLine();
+				final String code = new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
 
 				clientToken = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URL).execute();
-
-				credential.setFromTokenResponse(clientToken);
 
 				storeClientToken(jsonFactory);
 				LOGGER.log(Level.INFO, "client token stored in '" + this.clientTokenPath + "'");
 			} else {
 
-				final JsonParser parser = jsonFactory.createJsonParser(clientTokenAsJson);
-				clientToken = parser.parse(GoogleTokenResponse.class);
-				credential.setFromTokenResponse(clientToken);
+				clientToken = jsonFactory.createJsonParser(clientTokenAsJson).parse(GoogleTokenResponse.class);
 			}
-		} catch (final IOException e) {
 
+			credential.setFromTokenResponse(clientToken);
+
+		} catch (final IOException e) {
 			throw new CloudsyncException("Can't init remote google drive connector", e);
 		}
 	}
@@ -166,12 +163,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		initService(handler);
 
 		String title = handler.getLocalEncryptedTitle(item);
+		File parentDriveItem = null;
 		File driveItem;
 		int retryCount = 0;
 		do {
 			try {
 				refreshCredential();
-				final File parentDriveItem = _getDriveItem(item.getParent());
+				parentDriveItem = _getDriveItem(item.getParent());
 				final ParentReference parentReference = new ParentReference();
 				parentReference.setId(parentDriveItem.getId());
 				driveItem = new File();
@@ -197,18 +195,20 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			} catch (final NoSuchFileException e) {
 				throw e;
 			} catch (final IOException e) {
-				for (int i = 0; i < MIN_SEARCH_RETRIES; i++) {
-					driveItem = _searchDriveItem(item.getParent(), title);
-					if (driveItem != null) {
-
-						LOGGER.log(Level.WARNING, getExceptionMessage(e) + "found uploaded item - try to update");
-
-						item.setRemoteIdentifier(driveItem.getId());
-						update(handler, item, true);
-						return;
+				if( parentDriveItem != null ){
+					for (int i = 0; i < MIN_SEARCH_RETRIES; i++) {
+						driveItem = _searchDriveItem(item.getParent(), title);
+						if (driveItem != null) {
+	
+							LOGGER.log(Level.WARNING, getExceptionMessage(e) + "found uploaded item - try to update");
+	
+							item.setRemoteIdentifier(driveItem.getId());
+							update(handler, item, true);
+							return;
+						}
+						LOGGER.log(Level.WARNING, getExceptionMessage(e) + "item not uploaded - retry " + (i + 1) + "/" + MIN_SEARCH_RETRIES + " - wait " + MIN_SEARCH_BREAK + " ms");
+						sleep(MIN_SEARCH_BREAK);
 					}
-					LOGGER.log(Level.WARNING, getExceptionMessage(e) + "item not uploaded - retry " + (i + 1) + "/" + MIN_SEARCH_RETRIES + " - wait " + MIN_SEARCH_BREAK + " ms");
-					sleep(MIN_SEARCH_BREAK);
 				}
 				retryCount = validateException("remote upload", item, e, retryCount);
 			}
@@ -490,7 +490,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		} while (true);
 	}
 
-	private File _getDriveItem(final Item item) throws CloudsyncException {
+	private File _getDriveItem(final Item item) throws CloudsyncException, IOException {
 
 		final String id = item.getRemoteIdentifier();
 
@@ -503,8 +503,14 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 		try {
 			driveItem = service.files().get(id).execute();
-		} catch (final IOException e) {
-			throw new CloudsyncException("Couldn't find remote item '" + item.getPath() + "' [" + id + "]\ntry to run with --nocache");
+			
+		} catch( HttpResponseException e ){
+			
+			if( e.getStatusCode() == 404 ){
+				throw new CloudsyncException("Couldn't find remote item '" + item.getPath() + "' [" + id + "]\ntry to run with --nocache");
+			}
+			
+			throw e;
 		}
 
 		if (driveItem.getLabels().getTrashed()) {
@@ -515,7 +521,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return driveItem;
 	}
 
-	private File _getHistoryFolder(final Item item) throws CloudsyncException {
+	private File _getHistoryFolder(final Item item) throws CloudsyncException, IOException {
 
 		if (historyName == null) {
 			return null;
@@ -635,9 +641,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	private int validateException(String name, Item item, IOException e, int count) throws CloudsyncException {
 
 		if (count < RETRY_COUNT) {
-			// Caused by: java.io.IOException: insufficient data written
-			// VALIDATE: owncloud/Fotos/2008.10.04-09 Zypern/img_2875.jpg
-
 			long currentValidate = System.currentTimeMillis();
 			long current_retry_break = (currentValidate - lastValidate);
 			if (lastValidate > 0 && current_retry_break < MIN_RETRY_BREAK) {

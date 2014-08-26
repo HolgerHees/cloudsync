@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.cloudsync</groupId>
   <artifactId>cloudsync</artifactId>
-  <version>v1.0-beta2</version>
+  <version>v1.0-beta3</version>
   <name>cloudsync</name>
   <url>https://github.com/HolgerHees/cloudsync</url>
   <dependencies>
@@ -32,6 +32,16 @@
   		<version>3.3.2</version>
   	</dependency>
   	<dependency>
+  		<groupId>org.bouncycastle</groupId>
+  		<artifactId>bcpg-jdk15on</artifactId>
+  		<version>1.51</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.bouncycastle</groupId>
+  		<artifactId>bcprov-jdk15on</artifactId>
+  		<version>1.51</version>
+  	</dependency>
+  	<dependency>
   		<groupId>com.google.apis</groupId>
   		<artifactId>google-api-services-drive</artifactId>
   		<version>v2-rev139-1.19.0</version>
@@ -46,16 +56,11 @@
   		<artifactId>google-api-client-gson</artifactId>
   		<version>1.19.0</version>
   	</dependency>
-  	<dependency>
-  		<groupId>org.bouncycastle</groupId>
-  		<artifactId>bcpg-jdk15on</artifactId>
-  		<version>1.51</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.bouncycastle</groupId>
-  		<artifactId>bcprov-jdk15on</artifactId>
-  		<version>1.51</version>
-  	</dependency>
+	<dependency>
+	  <groupId>com.dropbox.core</groupId>
+	  <artifactId>dropbox-core-sdk</artifactId>
+	  <version>[1.7,1.8)</version>
+	</dependency>
   </dependencies>
   <build>
   	<plugins>
