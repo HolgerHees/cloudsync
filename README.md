@@ -1,7 +1,7 @@
 cloudsync
 =========
 
-Sync a local filesystem on linux, windows and osx incremental and encrypted with google drive (stable) or dropbox (alpha preview) simliar to rsync. You can also restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
+Sync a local filesystem on linux, windows and osx incremental and encrypted with google drive simliar to rsync. You can also restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
 
 Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematically for private async dsl connections. To solve this issues each file is encrypted and uploaded separately.
 
