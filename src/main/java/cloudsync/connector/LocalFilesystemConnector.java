@@ -75,10 +75,16 @@ public class LocalFilesystemConnector {
 
 	public LocalFilesystemConnector(final String path) {
 
-		if (path.startsWith(Item.SEPARATOR)) {
-			localPath = Item.SEPARATOR + Helper.trim(path, Item.SEPARATOR);
+		if (path != null) {
+
+			if (path.startsWith(Item.SEPARATOR)) {
+				localPath = Item.SEPARATOR + Helper.trim(path, Item.SEPARATOR);
+			} else {
+				localPath = Helper.trim(path, Item.SEPARATOR);
+			}
 		} else {
-			localPath = Helper.trim(path, Item.SEPARATOR);
+
+			localPath = "";
 		}
 
 		for (final Integer key : toPermMapping.keySet()) {
