@@ -3,7 +3,6 @@ package cloudsync.connector;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,7 +44,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
@@ -185,12 +183,12 @@ public class LocalFilesystemConnector {
 
 				try {
 
-					final InputStream data = handler.getRemoteDecryptedBinary(item);
+					final InputStream stream = handler.getRemoteDecryptedBinary(item);
 					// if (!createChecksum(data).equals(item.getChecksum())) {
 					// throw new
 					// CloudsyncException("restored filechecksum differs from the original filechecksum");
 					// }
-					final String link = IOUtils.toString( data );
+					final String link = IOUtils.toString( stream );
 					Files.createSymbolicLink(path, Paths.get(link));
 
 				} catch (final IOException e) {
@@ -200,20 +198,21 @@ public class LocalFilesystemConnector {
 			} else if (item.isType(ItemType.FILE)) {
 
 				try {
-					final InputStream data = handler.getRemoteDecryptedBinary(item);
-					if (!createChecksum(data).equals(item.getChecksum())) {
-						throw new CloudsyncException("restored filechecksum differs from the original filechecksum");
-					}
-					final OutputStream fos = new BufferedOutputStream(new FileOutputStream(path.toFile()));
+					final InputStream stream = handler.getRemoteDecryptedBinary(item);
+					final OutputStream fos = new BufferedOutputStream(Files.newOutputStream(path));
+					
 					try {
 						int bufferSize = 1024;
 						byte[] buffer = new byte[bufferSize];
 						int len = 0;
-						while ((len = data.read(buffer)) != -1) {
+						while ((len = stream.read(buffer)) != -1) {
 							fos.write(buffer, 0, len);
 						}
 					} finally {
 						fos.close();
+					}
+					if (!createChecksum(Files.newInputStream(path)).equals(item.getChecksum())) {
+						throw new CloudsyncException("restored filechecksum differs from the original filechecksum");
 					}
 					if (item.getFilesize() != Files.size(path) ) {
 						throw new CloudsyncException("restored filesize differs from the original filesize");
@@ -582,11 +581,6 @@ public class LocalFilesystemConnector {
 		return DigestUtils.md5Hex(data);
 	}
 
-	private static String createChecksum(final byte[] data) throws IOException {
-
-		return DigestUtils.md5Hex(data);
-	}
-
 	public StreamData getFileBinary(final Item item) throws CloudsyncException {
 
 		File file = new File(localPath + Item.SEPARATOR + item.getPath());
@@ -595,9 +589,8 @@ public class LocalFilesystemConnector {
 			if (item.isType(ItemType.LINK)) {
 
 				byte[] data = Files.readSymbolicLink(file.toPath()).toString().getBytes();
-				InputStream stream = new ByteArrayInputStream( data );
-				item.setChecksum(createChecksum(data));
-				return new StreamData( stream, data.length );
+				item.setChecksum(createChecksum(new ByteArrayInputStream( data )));
+				return new StreamData( new ByteArrayInputStream( data ), data.length );
 			} else if (item.isType(ItemType.FILE)) {
 
 				item.setChecksum(createChecksum(Files.newInputStream(file.toPath())));

@@ -592,7 +592,8 @@ public class Handler {
 	}
 
 	public InputStream getRemoteDecryptedBinary(final Item item) throws IOException, CloudsyncException {
-		InputStream data = remoteConnection.get(this, item);
-		return crypt.decryptData( data );
+		
+		InputStream stream = remoteConnection.get(this, item);
+		return crypt.decryptData( stream );
 	}
 }

@@ -121,15 +121,6 @@ public class Crypt {
 		} catch (Exception e) {
 			
 			throw new CloudsyncException("can't encrypt data", e);
-		} finally {
-
-			try {
-				if (in != null) {
-					in.close();
-				}
-			} catch (IOException e) {
-				throw new CloudsyncException("can't decrypt data", e);
-			}
 		}
 	}
 
@@ -142,6 +133,7 @@ public class Crypt {
 			_encryptData(output, data.getStream(), data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 			
 			final byte[] bytes = output.toByteArray();
+			
 			return new StreamData( new ByteArrayInputStream(bytes), bytes.length );
 		}
 		else{
@@ -208,6 +200,16 @@ public class Crypt {
 	                
 					String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) encrypted";
 					LOGGER.log(Level.FINEST, msg, true);
+	            }
+    		}
+    		else{
+    			
+	            byte[] buffer = new byte[BUFFER_SIZE];
+	            for (; ; ) {
+	                int n = input.read(buffer);
+	                if (n < 0)
+	                    break;
+	                literalOut.write(buffer, 0, n);
 	            }
     		}
     		
