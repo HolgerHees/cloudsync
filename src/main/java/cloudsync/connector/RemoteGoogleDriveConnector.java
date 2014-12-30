@@ -1,7 +1,6 @@
 package cloudsync.connector;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -31,6 +30,7 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
+import cloudsync.model.StreamData;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
@@ -96,6 +96,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 	public RemoteGoogleDriveConnector() {
 	}
 
+	@Override
 	public void init(String backupName, CmdOptions options) throws CloudsyncException {
 
 		RemoteGoogleDriveOptions googleDriveOptions = new RemoteGoogleDriveOptions(options, backupName);
@@ -175,15 +176,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				driveItem = new File();
 				driveItem.setTitle(title);
 				driveItem.setParents(Arrays.asList(parentReference));
-				final byte[] data = _prepareDriveItem(driveItem, item, handler, true);
+				final StreamData data = _prepareDriveItem(driveItem, item, handler, true);
 				if (data == null) {
 					driveItem = service.files().insert(driveItem).execute();
 				} else {
-					final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
-					params.setLength(data.length);
+					final InputStreamContent params = new InputStreamContent(FILE, data.getStream());
+					params.setLength(data.getLength());
 					Insert inserter = service.files().insert(driveItem, params);
 					MediaHttpUploader uploader = inserter.getMediaHttpUploader();
-					prepareUploader(uploader, data);
+					prepareUploader(uploader, data.getLength());
 					driveItem = inserter.execute();
 				}
 				if (driveItem == null) {
@@ -244,15 +245,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					}
 				}
 				File driveItem = new File();
-				final byte[] data = _prepareDriveItem(driveItem, item, handler, with_filedata);
+				final StreamData data = _prepareDriveItem(driveItem, item, handler, with_filedata);
 				if (data == null) {
 					driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
 				} else {
-					final InputStreamContent params = new InputStreamContent(FILE, new ByteArrayInputStream(data));
-					params.setLength(data.length);
+					final InputStreamContent params = new InputStreamContent(FILE, data.getStream());
+					params.setLength(data.getLength());
 					Update updater = service.files().update(item.getRemoteIdentifier(), driveItem, params);
 					MediaHttpUploader uploader = updater.getMediaHttpUploader();
-					prepareUploader(uploader, data);
+					prepareUploader(uploader, data.getLength());
 					driveItem = updater.execute();
 				}
 				if (driveItem == null) {
@@ -417,9 +418,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return child_items;
 	}
 
-	private byte[] _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
+	private StreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException, NoSuchFileException {
 
-		byte[] data = null;
+		StreamData data = null;
 		if (with_filedata) {
 
 			// "getLocalEncryptedBinary" should be called before "getMetadata"
@@ -696,15 +697,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		}
 	}
 
-	private void prepareUploader(MediaHttpUploader uploader, byte[] data) {
+	private void prepareUploader(MediaHttpUploader uploader, long length) {
 
 		int chunkSize = MediaHttpUploader.MINIMUM_CHUNK_SIZE * CHUNK_COUNT;
-		int chunkCount = (int) Math.ceil(data.length / (double) chunkSize);
+		int chunkCount = (int) Math.ceil(length / (double) chunkSize);
 
 		if (chunkCount > 1) {
 			uploader.setDirectUploadEnabled(false);
 			uploader.setChunkSize(chunkSize);
-			uploader.setProgressListener(new RemoteGoogleDriveProgress(this, data.length));
+			uploader.setProgressListener(new RemoteGoogleDriveProgress(this, length));
 		} else {
 
 			uploader.setDirectUploadEnabled(true);
@@ -713,13 +714,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	private class RemoteGoogleDriveProgress implements MediaHttpUploaderProgressListener {
 
-		int length;
+		long length;
 		private DecimalFormat df;
 		private long lastBytes;
 		private long lastTime;
 		private RemoteGoogleDriveConnector connector;
 
-		public RemoteGoogleDriveProgress(RemoteGoogleDriveConnector connector, int length) {
+		public RemoteGoogleDriveProgress(RemoteGoogleDriveConnector connector, long length) {
 			this.length = length;
 			this.connector = connector;
 			df = new DecimalFormat("00");
@@ -751,6 +752,9 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					long speed = convertToKB((mediaHttpUploader.getNumBytesUploaded() - lastBytes) / ((currentTime - lastTime) / 1000.0));
 					msg += " - " + speed + " kb/s";
 				}
+				
+				msg += "                              ";
+				
 				LOGGER.log(Level.FINEST, msg, true);
 
 				lastTime = currentTime;

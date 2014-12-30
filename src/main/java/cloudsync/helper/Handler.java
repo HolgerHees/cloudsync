@@ -3,6 +3,7 @@ package cloudsync.helper;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
@@ -38,6 +39,7 @@ import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
 import cloudsync.model.PermissionType;
 import cloudsync.model.RemoteItem;
+import cloudsync.model.StreamData;
 import cloudsync.model.SyncType;
 
 public class Handler {
@@ -125,6 +127,7 @@ public class Handler {
 		releaseLock();
 	}
 
+	@Override
 	public void finalize() throws CloudsyncException {
 
 		try {
@@ -562,11 +565,13 @@ public class Handler {
 		return root;
 	}
 
-	public byte[] getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
-		byte[] data = localConnection.getFileBinary(item);
-		if (data != null)
-			data = crypt.getEncryptedBinary(item.getName(), data, item);
-		return data;
+	public StreamData getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException {
+
+		StreamData data = localConnection.getFileBinary(item);
+
+		if (data == null) return new StreamData(null, 0L);
+
+		return crypt.getEncryptedBinary(item.getName(), data, item);
 	}
 
 	public String getLocalEncryptMetadata(final Item item) throws CloudsyncException {
@@ -586,7 +591,8 @@ public class Handler {
 		return Item.fromMetadata(remoteIdentifier, isFolder, crypt.decryptText(encryptedTitle), crypt.decryptText(encryptedMetadata), remoteFilesize, remoteCreationtime);
 	}
 
-	public byte[] getRemoteDecryptedBinary(final Item item) throws IOException, CloudsyncException {
-		return crypt.decryptData(remoteConnection.get(this, item));
+	public InputStream getRemoteDecryptedBinary(final Item item) throws IOException, CloudsyncException {
+		InputStream data = remoteConnection.get(this, item);
+		return crypt.decryptData( data );
 	}
 }

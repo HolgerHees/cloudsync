@@ -30,6 +30,7 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
+import cloudsync.model.StreamData;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
@@ -75,6 +76,7 @@ public class RemoteDropboxConnector implements RemoteConnector {
 	public RemoteDropboxConnector() {
 	}
 
+	@Override
 	public void init(String backupName, CmdOptions options) throws CloudsyncException {
 
 		RemoteDropboxOptions dropboxOptions = new RemoteDropboxOptions(options, backupName);
@@ -140,10 +142,10 @@ public class RemoteDropboxConnector implements RemoteConnector {
 				if (item.isType(ItemType.FOLDER)) {
 					entry = client.createFolder(path);
 				} else {
-					byte[] data = handler.getLocalEncryptedBinary(item);
+					StreamData data = handler.getLocalEncryptedBinary(item);
 					if (data == null)
-						data = new byte[0];
-					entry = client.uploadFile(path, DbxWriteMode.add(), data.length, new ByteArrayInputStream(data));
+						data = new StreamData( new ByteArrayInputStream("".getBytes()), 0);
+					entry = client.uploadFile(path, DbxWriteMode.add(), data.getLength(), data.getStream());
 				}
 
 				String metadata = handler.getLocalEncryptMetadata(item);
@@ -173,9 +175,9 @@ public class RemoteDropboxConnector implements RemoteConnector {
 
 				String path = buildPath(item);
 				if (with_filedata) {
-					byte[] data = handler.getLocalEncryptedBinary(item);
+					StreamData data = handler.getLocalEncryptedBinary(item);
 					if (data != null) {
-						client.uploadFile(path, DbxWriteMode.force(), data.length, new ByteArrayInputStream(data));
+						client.uploadFile(path, DbxWriteMode.force(), data.getLength(), data.getStream());
 					}
 				}
 				String metadata = handler.getLocalEncryptMetadata(item);

@@ -10,6 +10,7 @@ public class LogfileHandler extends FileHandler {
 		super(pattern);
 	}
 
+	@Override
 	public void publish(LogRecord record) {
 
 		if (record.getParameters() != null) return;

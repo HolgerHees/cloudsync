@@ -2,14 +2,18 @@ package cloudsync.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.NoSuchFileException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.text.DecimalFormat;
 import java.util.Date;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 
@@ -35,12 +39,18 @@ import org.bouncycastle.util.io.Streams;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.model.Item;
+import cloudsync.model.StreamData;
+import cloudsync.model.TempInputStream;
 
 public class Crypt {
 
 	// private final static Logger LOGGER =
 	// Logger.getLogger(Crypt.class.getName());
 
+	private final static Logger LOGGER = Logger.getLogger(Crypt.class.getName());
+
+	private static final int BUFFER_SIZE = 1 << 16;
+	
 	private static int ENCRYPT_ALGORITHM = PGPEncryptedDataGenerator.AES_256;
 	private static boolean ENCRYPT_ARMOR = false;
 
@@ -67,10 +77,14 @@ public class Crypt {
 
 		text = text.replace('_', '/');
 		final byte[] data = Base64.decodeBase64(text);
-		return new String(decryptData(new ByteArrayInputStream(data)));
+		try {
+			return new String( Streams.readAll( decryptData(new ByteArrayInputStream(data)) ));
+		} catch (IOException e) {
+			throw new CloudsyncException("can't encrypt data", e);
+		}
 	}
 
-	public byte[] decryptData(final InputStream stream) throws CloudsyncException {
+	public InputStream decryptData(final InputStream stream) throws CloudsyncException {
 
 		InputStream in = null;
 
@@ -101,9 +115,11 @@ public class Crypt {
 			pgpFact = new JcaPGPObjectFactory(cData.getDataStream());
 			
 			final PGPLiteralData ld = (PGPLiteralData) pgpFact.nextObject();
+			
+			return ld.getInputStream();
 
-			return Streams.readAll(ld.getInputStream());
 		} catch (Exception e) {
+			
 			throw new CloudsyncException("can't encrypt data", e);
 		} finally {
 
@@ -117,43 +133,96 @@ public class Crypt {
 		}
 	}
 
-	public byte[] getEncryptedBinary(final String name, final byte[] data, final Item item) throws NoSuchFileException, CloudsyncException {
+	public StreamData getEncryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException {
+		
+		// 128MB
+		if( data.getLength() < 134217728 ){
 
-		return _encryptData(data, name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+			final ByteArrayOutputStream output = new ByteArrayOutputStream();
+			_encryptData(output, data.getStream(), data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+			
+			final byte[] bytes = output.toByteArray();
+			return new StreamData( new ByteArrayInputStream(bytes), bytes.length );
+		}
+		else{
+			
+
+			try {
+				
+				File temp = File.createTempFile("encrypted", ".pgp");
+				temp.deleteOnExit();
+				final FileOutputStream output = new FileOutputStream(temp);
+				_encryptData(output, data.getStream(), data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+
+				return new StreamData( new TempInputStream(temp), temp.length() );
+
+			} catch (IOException e) {
+				
+				throw new CloudsyncException("can't encrypt data", e);
+			} 
+		}
 	}
 
 	public String encryptText(String text) throws CloudsyncException {
 
-		final byte[] data = _encryptData(text.getBytes(), PGPLiteralData.CONSOLE, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
-		text = Base64.encodeBase64String(data);
+		final ByteArrayOutputStream output = new ByteArrayOutputStream();
+		final byte[] bytes = text.getBytes();
+		_encryptData(output, new ByteArrayInputStream( bytes ), bytes.length, PGPLiteralData.CONSOLE, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+
+		text = Base64.encodeBase64String(output.toByteArray());
 		text = text.replace('/', '_');
 		return text;
 	}
 
-	private byte[] _encryptData(final byte[] data, final String name, final int algorithm, final boolean armor) throws CloudsyncException {
+	private void _encryptData(final OutputStream output, final InputStream input, final long length, final String name, final int algorithm, final boolean armor) throws CloudsyncException {
 
-		final ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-		OutputStream out = bOut;
+		OutputStream out = output;
 
 		try {
 
-			final byte[] compressedData = compress(data, name, CompressionAlgorithmTags.ZIP);
+			if (armor) out = new ArmoredOutputStream(out);
 
-			if (armor) {
-				out = new ArmoredOutputStream(out);
-			}
+			final PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(new SecureRandom()).setProvider("BC"));
+			encryptedDataGenerator.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
+			final OutputStream encryptedData = encryptedDataGenerator.open(out, new byte[BUFFER_SIZE]);
+			
+			PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZIP);
+            OutputStream compressedOut = compressedDataGenerator.open(encryptedData);
 
-			final PGPEncryptedDataGenerator encGen = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(new SecureRandom()).setProvider("BC"));
-			encGen.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
+            final PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
+    		final OutputStream literalOut = literalDataGenerator.open(compressedOut, PGPLiteralData.BINARY, name, new Date(), new byte[BUFFER_SIZE] );
+    		
+    		if( output instanceof FileOutputStream ){
+    		
+	    		double current = 0;
+	    		DecimalFormat df = new DecimalFormat("00");
+	    		
+	            byte[] buffer = new byte[BUFFER_SIZE];
+	            for (; ; ) {
+	                int n = input.read(buffer);
+	                if (n < 0)
+	                    break;
+	                literalOut.write(buffer, 0, n);
+	                
+	                current += n;
+	                
+					String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) encrypted                              ";
+					LOGGER.log(Level.FINEST, msg, true);
+	            }
+    		}
+    		
+            input.close();
+            literalOut.close();
+            literalDataGenerator.close();
 
-			final OutputStream encOut = encGen.open(out, compressedData.length);
+            compressedOut.close();
+            compressedDataGenerator.close();
+            encryptedData.close();
+            encryptedDataGenerator.close();
 
-			encOut.write(compressedData);
-			encOut.close();
-
-			return bOut.toByteArray();
 		} catch (Exception e) {
 			throw new CloudsyncException("can't encrypt data", e);
+			
 		} finally {
 
 			if (armor) {
@@ -165,30 +234,9 @@ public class Crypt {
 			}
 		}
 	}
+	
+	private long convertToKB(double size) {
 
-	private static byte[] compress(final byte[] clearData, final String fileName, final int algorithm) throws IOException {
-		final ByteArrayOutputStream bOut = new ByteArrayOutputStream();
-		final PGPCompressedDataGenerator comData = new PGPCompressedDataGenerator(algorithm);
-		final OutputStream cos = comData.open(bOut); // open it with the final
-		// destination
-
-		final PGPLiteralDataGenerator lData = new PGPLiteralDataGenerator();
-
-		// we want to generate compressed data. This might be a user option
-		// later,
-		// in which case we would pass in bOut.
-		final OutputStream pOut = lData.open(cos, // the compressed output
-				// stream
-				PGPLiteralData.BINARY, fileName, // "filename" to store
-				clearData.length, // length of clear data
-				new Date() // current time
-				);
-
-		pOut.write(clearData);
-		pOut.close();
-
-		comData.close();
-
-		return bOut.toByteArray();
+		return (long) Math.ceil(size / 1024);
 	}
 }
