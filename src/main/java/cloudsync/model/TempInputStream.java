@@ -17,9 +17,6 @@ public class TempInputStream extends FileInputStream {
 	@Override
 	public void close() throws IOException{
 		super.close();
-		
-		System.out.println("delete");
-		
 		this.file.delete();
 	}
 
