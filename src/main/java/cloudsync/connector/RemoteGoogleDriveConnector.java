@@ -753,8 +753,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 					msg += " - " + speed + " kb/s";
 				}
 				
-				msg += "                              ";
-				
 				LOGGER.log(Level.FINEST, msg, true);
 
 				lastTime = currentTime;

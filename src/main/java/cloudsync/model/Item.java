@@ -83,7 +83,7 @@ public class Item {
 
 		RemoteItem item = new RemoteItem(remoteFilesize, remoteCreationtime);
 
-		if (metadata != null) {
+		if ( !StringUtils.isEmpty(metadata)) {
 
 			item = (RemoteItem) initItem(item, name, remoteIdentifier, metadata.split(METADATA_SEPARATOR));
 		} else {

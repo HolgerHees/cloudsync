@@ -206,7 +206,7 @@ public class Crypt {
 	                
 	                current += n;
 	                
-					String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) encrypted                              ";
+					String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) encrypted";
 					LOGGER.log(Level.FINEST, msg, true);
 	            }
     		}
