@@ -244,15 +244,11 @@ public class CmdOptions {
 		} catch (final IOException e) {
 			configValid = false;
 		}
-
+		
 		name = getOptionValue(cmd, "name", null);
 
 		remoteConnector = prop.getProperty("REMOTE_CONNECTOR");
 
-		passphrase = prop.getProperty("PASSPHRASE");
-		if (StringUtils.isEmpty(passphrase)) {
-			throw new CloudsyncException("'PASSPHRASE' is not configured");
-		}
 		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
 		followlinks = LinkType.fromName(value);
 		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
@@ -309,7 +305,8 @@ public class CmdOptions {
 				}
 				if (config == null) {
 					messages.add(" Missing --config <path>");
-				} else if (!configValid) {
+				} 
+				else if (!configValid) {
 					messages.add(" --config <path> not valid");
 				}
 				if (!logfileValid) {
@@ -319,7 +316,15 @@ public class CmdOptions {
 					messages.add(" --cachefile <path> not valid");
 				}
 			}
+			else if (!configValid) {
+				messages.add(" No config file found");
+			}
 			throw new UsageException(StringUtils.join(messages, '\n'));
+		}
+		
+		passphrase = prop.getProperty("PASSPHRASE");
+		if (StringUtils.isEmpty(passphrase)) {
+			throw new CloudsyncException("'PASSPHRASE' is not configured");
 		}
 	}
 
