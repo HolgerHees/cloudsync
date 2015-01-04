@@ -124,7 +124,7 @@ public class Crypt {
 		}
 	}
 
-	public StreamData getEncryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException {
+	public StreamData encryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException {
 		
 		// 128MB
 		if( data.getLength() < 134217728 ){
@@ -184,33 +184,28 @@ public class Crypt {
             final PGPLiteralDataGenerator literalDataGenerator = new PGPLiteralDataGenerator();
     		final OutputStream literalOut = literalDataGenerator.open(compressedOut, PGPLiteralData.BINARY, name, new Date(), new byte[BUFFER_SIZE] );
     		
-    		if( output instanceof FileOutputStream ){
-    		
+    		byte[] buffer = new byte[BUFFER_SIZE];
+			int len = 0;
+			
+    		if( output instanceof FileOutputStream )
+    		{
 	    		double current = 0;
 	    		DecimalFormat df = new DecimalFormat("00");
 	    		
-	            byte[] buffer = new byte[BUFFER_SIZE];
-	            for (; ; ) {
-	                int n = input.read(buffer);
-	                if (n < 0)
-	                    break;
-	                literalOut.write(buffer, 0, n);
-	                
-	                current += n;
-	                
+    			while ((len = input.read(buffer)) != -1)
+    			{
+    				literalOut.write(buffer, 0, len);
+	                current += len;
 					String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) encrypted";
 					LOGGER.log(Level.FINEST, msg, true);
-	            }
+				}
     		}
-    		else{
-    			
-	            byte[] buffer = new byte[BUFFER_SIZE];
-	            for (; ; ) {
-	                int n = input.read(buffer);
-	                if (n < 0)
-	                    break;
-	                literalOut.write(buffer, 0, n);
-	            }
+    		else
+    		{
+    			while ((len = input.read(buffer)) != -1)
+    			{
+    				literalOut.write(buffer, 0, len);
+				}
     		}
     		
             input.close();

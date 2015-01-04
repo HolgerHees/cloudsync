@@ -569,9 +569,9 @@ public class Handler {
 
 		StreamData data = localConnection.getFileBinary(item);
 
-		if (data == null) return new StreamData(null, 0L);
+		if (data != null) data = crypt.encryptedBinary(item.getName(), data, item);
 
-		return crypt.getEncryptedBinary(item.getName(), data, item);
+		return data;
 	}
 
 	public String getLocalEncryptMetadata(final Item item) throws CloudsyncException {

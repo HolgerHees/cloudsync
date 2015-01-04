@@ -31,6 +31,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,6 +45,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
@@ -56,7 +58,10 @@ import cloudsync.model.StreamData;
 
 public class LocalFilesystemConnector {
 
-	private final static Logger LOGGER = Logger.getLogger(LocalFilesystemConnector.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(LocalFilesystemConnector.class.getName());
+
+	private static final int BUFFER_SIZE = 1 << 16;
+	private static final DecimalFormat df = new DecimalFormat("00");
 
 	private static Map<Integer, PosixFilePermission> toPermMapping = new HashMap<Integer, PosixFilePermission>();
 	static {
@@ -201,16 +206,57 @@ public class LocalFilesystemConnector {
 					final InputStream stream = handler.getRemoteDecryptedBinary(item);
 					final OutputStream fos = new BufferedOutputStream(Files.newOutputStream(path));
 					
-					try {
-						int bufferSize = 1024;
-						byte[] buffer = new byte[bufferSize];
+					final long length = item.getFilesize();
+					double current = 0;
+						
+					try
+					{
+						byte[] buffer = new byte[BUFFER_SIZE];
 						int len = 0;
-						while ((len = stream.read(buffer)) != -1) {
-							fos.write(buffer, 0, len);
+
+						// 2 MB
+						if( length > 2097152 )
+						{
+							
+							long lastTime = System.currentTimeMillis();
+							double lastBytes = 0;
+							String currentSpeed = "";
+
+							while ((len = stream.read(buffer)) != -1)
+							{
+								fos.write(buffer, 0, len);
+				                current += len;
+				                
+								long currentTime = System.currentTimeMillis();
+
+								String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) restored";
+								double diffTime = ((currentTime - lastTime) / 1000.0);
+
+								if( diffTime > 5.0 ) 
+								{
+									long speed = convertToKB((current - lastBytes) / diffTime);
+									currentSpeed = " - " + speed + " kb/s";
+
+									lastTime = currentTime;
+									lastBytes = current;
+								}
+								
+								LOGGER.log(Level.FINEST, msg + currentSpeed, true);
+							}
 						}
-					} finally {
+						else
+						{
+							while ((len = stream.read(buffer)) != -1)
+							{
+								fos.write(buffer, 0, len);
+							}
+						}
+					}
+					finally 
+					{
 						fos.close();
 					}
+					
 					if (!createChecksum(Files.newInputStream(path)).equals(item.getChecksum())) {
 						throw new CloudsyncException("restored filechecksum differs from the original filechecksum");
 					}
@@ -601,5 +647,10 @@ public class LocalFilesystemConnector {
 
 			throw new CloudsyncException("Can't read data of '" + file.getAbsolutePath() + "'", e);
 		}
+	}
+	
+	private long convertToKB(double size) {
+
+		return (long) Math.ceil(size / 1024);
 	}
 }
