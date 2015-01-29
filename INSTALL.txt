@@ -2,6 +2,6 @@ to use the git clone follow the maven build instruction
 
 https://github.com/HolgerHees/cloudsync/wiki/Maven-HowTo
 
-the binary releases are runable without any additional steps.
+the binary releases are runnable without any additional steps.
 
 https://github.com/HolgerHees/cloudsync/releases
