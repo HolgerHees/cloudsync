@@ -126,32 +126,49 @@ public class Crypt {
 
 	public StreamData encryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException {
 		
-		// 128MB
-		if( data.getLength() < 134217728 ){
+		InputStream input = data.getStream();
+		
+		try{
+		
+			// 128MB
+			if( data.getLength() < 134217728 ){
 
-			final ByteArrayOutputStream output = new ByteArrayOutputStream();
-			_encryptData(output, data.getStream(), data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+				final ByteArrayOutputStream output = new ByteArrayOutputStream();
+				_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 			
-			final byte[] bytes = output.toByteArray();
+				final byte[] bytes = output.toByteArray();
 			
-			return new StreamData( new ByteArrayInputStream(bytes), bytes.length );
-		}
-		else{
+				return new StreamData( new ByteArrayInputStream(bytes), bytes.length );
+			}
+			else{
 			
 
-			try {
+				try {
 				
-				File temp = File.createTempFile("encrypted", ".pgp");
-				temp.deleteOnExit();
-				final FileOutputStream output = new FileOutputStream(temp);
-				_encryptData(output, data.getStream(), data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+					File temp = File.createTempFile("encrypted", ".pgp");
+					temp.deleteOnExit();
+					final FileOutputStream output = new FileOutputStream(temp);
+					_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 
-				return new StreamData( new TempInputStream(temp), temp.length() );
+					return new StreamData( new TempInputStream(temp), temp.length() );
+
+				} catch (IOException e) {
+				
+					throw new CloudsyncException("can't encrypt data", e);
+				}
+			}
+			
+		}
+		finally{
+		
+			try {
+			
+				input.close();
 
 			} catch (IOException e) {
 				
-				throw new CloudsyncException("can't encrypt data", e);
-			} 
+				throw new CloudsyncException("can't close input stream", e);
+			}
 		}
 	}
 
