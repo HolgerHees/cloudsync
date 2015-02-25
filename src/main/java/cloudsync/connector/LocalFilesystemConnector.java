@@ -1,6 +1,5 @@
 package cloudsync.connector;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -204,7 +203,7 @@ public class LocalFilesystemConnector {
 
 				try {
 					final InputStream stream = handler.getRemoteDecryptedBinary(item);
-					final OutputStream fos = new BufferedOutputStream(Files.newOutputStream(path));
+					final OutputStream fos = Files.newOutputStream(path);
 					
 					final long length = item.getFilesize();
 					double current = 0;
