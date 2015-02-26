@@ -214,7 +214,8 @@ public class LocalFilesystemConnector {
 				InputStream remoteDecryptedStream = null;
 				OutputStream outputStream = null;
 				
-				try {
+				try
+				{
 					remoteStream = handler.getRemoteBinary(item);
 					remoteDecryptedStream = handler.getRemoteDecryptedBinary(remoteStream);
 					outputStream = Files.newOutputStream(path);
@@ -222,54 +223,45 @@ public class LocalFilesystemConnector {
 					final long length = item.getFilesize();
 					double current = 0;
 						
-					try
+					byte[] buffer = new byte[BUFFER_SIZE];
+					int len = 0;
+
+					// 2 MB
+					if( length > 2097152 )
 					{
-						byte[] buffer = new byte[BUFFER_SIZE];
-						int len = 0;
+						
+						long lastTime = System.currentTimeMillis();
+						double lastBytes = 0;
+						String currentSpeed = "";
 
-						// 2 MB
-						if( length > 2097152 )
+						while ((len = remoteDecryptedStream.read(buffer)) != -1)
 						{
+							outputStream.write(buffer, 0, len);
+			                current += len;
+			                
+							long currentTime = System.currentTimeMillis();
+
+							String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) restored";
+							double diffTime = ((currentTime - lastTime) / 1000.0);
+
+							if( diffTime > 5.0 ) 
+							{
+								long speed = convertToKB((current - lastBytes) / diffTime);
+								currentSpeed = " - " + speed + " kb/s";
+
+								lastTime = currentTime;
+								lastBytes = current;
+							}
 							
-							long lastTime = System.currentTimeMillis();
-							double lastBytes = 0;
-							String currentSpeed = "";
-
-							while ((len = remoteDecryptedStream.read(buffer)) != -1)
-							{
-								outputStream.write(buffer, 0, len);
-				                current += len;
-				                
-								long currentTime = System.currentTimeMillis();
-
-								String msg = "\r  " + df.format(Math.ceil(current*100/length)) + "% (" + convertToKB(current) + " of " + convertToKB(length) + " kb) restored";
-								double diffTime = ((currentTime - lastTime) / 1000.0);
-
-								if( diffTime > 5.0 ) 
-								{
-									long speed = convertToKB((current - lastBytes) / diffTime);
-									currentSpeed = " - " + speed + " kb/s";
-
-									lastTime = currentTime;
-									lastBytes = current;
-								}
-								
-								LOGGER.log(Level.FINEST, msg + currentSpeed, true);
-							}
-						}
-						else
-						{
-							while ((len = remoteDecryptedStream.read(buffer)) != -1)
-							{
-								outputStream.write(buffer, 0, len);
-							}
+							LOGGER.log(Level.FINEST, msg + currentSpeed, true);
 						}
 					}
-					finally 
+					else
 					{
-						if( remoteStream != null ) IOUtils.closeQuietly(remoteStream);
-						if( remoteDecryptedStream != null ) IOUtils.closeQuietly(remoteDecryptedStream);
-						if( outputStream != null ) IOUtils.closeQuietly(outputStream);
+						while ((len = remoteDecryptedStream.read(buffer)) != -1)
+						{
+							outputStream.write(buffer, 0, len);
+						}
 					}
 					
 					if (!createChecksum(Files.newInputStream(path)).equals(item.getChecksum())) {
@@ -278,11 +270,20 @@ public class LocalFilesystemConnector {
 					if (item.getFilesize() != Files.size(path) ) {
 						throw new CloudsyncException("restored filesize differs from the original filesize");
 					}
+					
 				} catch (final IOException e) {
 
 					throw new CloudsyncException("Unexpected error during local update of " + item.getTypeName() + " '" + item.getPath() + "'", e);
+
+				} finally {
+				
+					if( remoteStream != null ) IOUtils.closeQuietly(remoteStream);
+					if( remoteDecryptedStream != null ) IOUtils.closeQuietly(remoteDecryptedStream);
+					if( outputStream != null ) IOUtils.closeQuietly(outputStream);
 				}
+				
 			} else {
+				
 				throw new CloudsyncException("Unsupported type " + item.getTypeName() + "' on '" + item.getPath() + "'");
 			}
 		}
