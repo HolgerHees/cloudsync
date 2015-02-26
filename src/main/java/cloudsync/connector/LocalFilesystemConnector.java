@@ -1,6 +1,5 @@
 package cloudsync.connector;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -186,25 +185,39 @@ public class LocalFilesystemConnector {
 
 			if (item.isType(ItemType.LINK)) {
 
+				InputStream remoteStream = null;
+				InputStream remoteDecryptedStream = null;
+				
 				try {
 
-					final InputStream stream = handler.getRemoteDecryptedBinary(item);
+					remoteStream = handler.getRemoteBinary(item);
+					remoteDecryptedStream = handler.getRemoteDecryptedBinary(remoteStream);
 					// if (!createChecksum(data).equals(item.getChecksum())) {
 					// throw new
 					// CloudsyncException("restored filechecksum differs from the original filechecksum");
 					// }
-					final String link = IOUtils.toString( stream );
+					final String link = IOUtils.toString( remoteDecryptedStream );
 					Files.createSymbolicLink(path, Paths.get(link));
 
 				} catch (final IOException e) {
 
 					throw new CloudsyncException("Unexpected error during local update of " + item.getTypeName() + " '" + item.getPath() + "'", e);
+					
+				} finally{
+					
+					if( remoteStream != null ) IOUtils.closeQuietly(remoteStream);
+					if( remoteDecryptedStream != null ) IOUtils.closeQuietly(remoteDecryptedStream);
 				}
 			} else if (item.isType(ItemType.FILE)) {
 
+				InputStream remoteStream = null;
+				InputStream remoteDecryptedStream = null;
+				OutputStream outputStream = null;
+				
 				try {
-					final InputStream stream = handler.getRemoteDecryptedBinary(item);
-					final OutputStream fos = new BufferedOutputStream(Files.newOutputStream(path));
+					remoteStream = handler.getRemoteBinary(item);
+					remoteDecryptedStream = handler.getRemoteDecryptedBinary(remoteStream);
+					outputStream = Files.newOutputStream(path);
 					
 					final long length = item.getFilesize();
 					double current = 0;
@@ -222,9 +235,9 @@ public class LocalFilesystemConnector {
 							double lastBytes = 0;
 							String currentSpeed = "";
 
-							while ((len = stream.read(buffer)) != -1)
+							while ((len = remoteDecryptedStream.read(buffer)) != -1)
 							{
-								fos.write(buffer, 0, len);
+								outputStream.write(buffer, 0, len);
 				                current += len;
 				                
 								long currentTime = System.currentTimeMillis();
@@ -246,15 +259,17 @@ public class LocalFilesystemConnector {
 						}
 						else
 						{
-							while ((len = stream.read(buffer)) != -1)
+							while ((len = remoteDecryptedStream.read(buffer)) != -1)
 							{
-								fos.write(buffer, 0, len);
+								outputStream.write(buffer, 0, len);
 							}
 						}
 					}
 					finally 
 					{
-						fos.close();
+						if( remoteStream != null ) IOUtils.closeQuietly(remoteStream);
+						if( remoteDecryptedStream != null ) IOUtils.closeQuietly(remoteDecryptedStream);
+						if( outputStream != null ) IOUtils.closeQuietly(outputStream);
 					}
 					
 					if (!createChecksum(Files.newInputStream(path)).equals(item.getChecksum())) {

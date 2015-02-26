@@ -591,9 +591,13 @@ public class Handler {
 		return Item.fromMetadata(remoteIdentifier, isFolder, crypt.decryptText(encryptedTitle), crypt.decryptText(encryptedMetadata), remoteFilesize, remoteCreationtime);
 	}
 
-	public InputStream getRemoteDecryptedBinary(final Item item) throws IOException, CloudsyncException {
+	public InputStream getRemoteBinary(final Item item) throws IOException, CloudsyncException {
 		
-		InputStream stream = remoteConnection.get(this, item);
+		return remoteConnection.get(this, item);
+	}
+	
+	public InputStream getRemoteDecryptedBinary(InputStream stream) throws IOException, CloudsyncException {
+		
 		return crypt.decryptData( stream );
 	}
 }

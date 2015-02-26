@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 import javax.crypto.Cipher;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.IOUtils;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
 import org.bouncycastle.bcpg.CompressionAlgorithmTags;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -126,9 +127,11 @@ public class Crypt {
 
 	public StreamData encryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException {
 		
-		InputStream input = data.getStream();
+		InputStream input = null;
 		
 		try{
+			
+			input = data.getStream();
 		
 			// 128MB
 			if( data.getLength() < 134217728 ){
@@ -161,14 +164,7 @@ public class Crypt {
 		}
 		finally{
 		
-			try {
-			
-				input.close();
-
-			} catch (IOException e) {
-				
-				throw new CloudsyncException("can't close input stream", e);
-			}
+			if( input != null ) IOUtils.closeQuietly(input);
 		}
 	}
 
