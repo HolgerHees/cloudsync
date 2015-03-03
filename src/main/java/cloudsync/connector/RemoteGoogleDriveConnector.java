@@ -443,8 +443,15 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			property.setVisibility("PRIVATE");
 			properties.add(property);
 		}
-		driveItem.setProperties(properties);
+		
+		final Property property = new Property();
+		property.setKey("metadataParts");
+		property.setValue(Integer.toString(partCounter));
+		property.setVisibility("PRIVATE");
+		properties.add(property);
 
+		driveItem.setProperties(properties);
+		
 		driveItem.setMimeType(item.isType(ItemType.FOLDER) ? FOLDER : FILE);
 
 		return data;
@@ -452,21 +459,35 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 
 	private RemoteItem _prepareBackupItem(final File driveItem, final Handler handler) throws CloudsyncException {
 
-		final List<String> parts = new ArrayList<String>();
-
 		final List<Property> properties = driveItem.getProperties();
+		
+		final Map<Integer,String> metadataMap = new HashMap<Integer, String>();
+		int metadataPartCount = -1;
+
 		if (properties != null) {
-			for (final Property property : driveItem.getProperties()) {
+			for (final Property property : properties) {
 
 				final String key = property.getKey();
 				if (!key.startsWith("metadata")) {
 					continue;
 				}
 
-				parts.add(Integer.parseInt(key.substring(8)), property.getValue());
+				if (key.equals("metadataParts")) {
+					metadataPartCount = Integer.parseInt(property.getValue());
+				}
+				else{
+					metadataMap.put(Integer.parseInt(key.substring(8)), property.getValue());
+				}
 			}
 		}
-
+		
+		if( metadataPartCount == -1 ) metadataPartCount = metadataMap.size();
+		
+		final List<String> parts = new ArrayList<String>();
+		for( int i = 0; i < metadataPartCount; i++ ){
+			parts.add(i, metadataMap.get(Integer.valueOf(i)));
+		}
+		
 		return handler.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), driveItem.getTitle(), StringUtils.join(parts.toArray()), driveItem.getFileSize(),
 				FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
 	}

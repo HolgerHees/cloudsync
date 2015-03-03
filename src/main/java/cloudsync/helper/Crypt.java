@@ -121,7 +121,7 @@ public class Crypt {
 
 		} catch (Exception e) {
 			
-			throw new CloudsyncException("can't encrypt data", e);
+			throw new CloudsyncException("can't decrypt data", e);
 		}
 	}
 
