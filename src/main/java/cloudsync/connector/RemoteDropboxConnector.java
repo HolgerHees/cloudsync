@@ -315,7 +315,7 @@ public class RemoteDropboxConnector implements RemoteConnector {
 
 	private RemoteItem _prepareBackupItem(final DbxEntry[] childData, final Handler handler) throws CloudsyncException {
 
-		String metadata = null;
+		String encryptedMetadata = null;
 		if (childData[1] != null) {
 			int retryCount = 0;
 			do {
@@ -323,7 +323,7 @@ public class RemoteDropboxConnector implements RemoteConnector {
 					ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 					try {
 						client.getFile(childData[1].path, null, outputStream);
-						metadata = outputStream.toString("ASCII");
+						encryptedMetadata = outputStream.toString("ASCII");
 						break;
 					} finally {
 						outputStream.close();
@@ -348,8 +348,11 @@ public class RemoteDropboxConnector implements RemoteConnector {
 			size = 0l;
 			time = 0l;
 		}
+		
+		String title = handler.getDecryptedText( childData[0].name );
+		String metadata = handler.getDecryptedText( encryptedMetadata );
 
-		return handler.getRemoteItem(childData[0].name, childData[0].isFolder(), childData[0].name, metadata, size, FileTime.fromMillis(time));
+		return handler.getRemoteItem(childData[0].name, childData[0].isFolder(), title, metadata, size, FileTime.fromMillis(time));
 	}
 
 	private void _removeFromCache(final String path) {
