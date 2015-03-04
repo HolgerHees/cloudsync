@@ -585,10 +585,15 @@ public class Handler {
 		return crypt.encryptText(item.getName());
 	}
 
-	public RemoteItem getRemoteItem(String remoteIdentifier, boolean isFolder, String encryptedTitle, String encryptedMetadata, Long remoteFilesize, FileTime remoteCreationtime)
+	public String getDecryptedText(final String text) throws CloudsyncException {
+
+		return crypt.decryptText(text);
+	}
+
+	public RemoteItem getRemoteItem(String remoteIdentifier, boolean isFolder, String title, String metadata, Long remoteFilesize, FileTime remoteCreationtime)
 			throws CloudsyncException {
 
-		return Item.fromMetadata(remoteIdentifier, isFolder, crypt.decryptText(encryptedTitle), crypt.decryptText(encryptedMetadata), remoteFilesize, remoteCreationtime);
+		return Item.fromMetadata(remoteIdentifier, isFolder, title, metadata, remoteFilesize, remoteCreationtime);
 	}
 
 	public InputStream getRemoteBinary(final Item item) throws IOException, CloudsyncException {

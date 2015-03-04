@@ -336,7 +336,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 				final List<RemoteItem> child_items = new ArrayList<RemoteItem>();
 				final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
 				for (final File child : childDriveItems) {
-					child_items.add(_prepareBackupItem(child, handler));
+					child_items.add(_prepareBackupItem(parentItem, child, handler));
 				}
 				return child_items;
 			} catch (final IOException e) {
@@ -457,7 +457,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 		return data;
 	}
 
-	private RemoteItem _prepareBackupItem(final File driveItem, final Handler handler) throws CloudsyncException {
+	private RemoteItem _prepareBackupItem(final Item parentItem, final File driveItem, final Handler handler) throws CloudsyncException {
 
 		final List<Property> properties = driveItem.getProperties();
 		
@@ -488,8 +488,37 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			parts.add(i, metadataMap.get(Integer.valueOf(i)));
 		}
 		
-		return handler.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), driveItem.getTitle(), StringUtils.join(parts.toArray()), driveItem.getFileSize(),
-				FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
+		try
+		{
+			String title = handler.getDecryptedText( driveItem.getTitle() );
+			String metadata = null;
+			
+			try
+			{
+				if( parts.size() > 0 )
+				{
+					handler.getDecryptedText( StringUtils.join(parts.toArray()) );
+				}
+				else
+				{
+					ItemType type = driveItem.getMimeType().equals(FOLDER) ? ItemType.FOLDER : ItemType.FILE;
+					LOGGER.log(Level.WARNING, "Found no metadata of " + type.getName() + " '" + parentItem.getPath() + "/"+title+"'");
+				}
+			}
+			catch( CloudsyncException e )
+			{
+				ItemType type = driveItem.getMimeType().equals(FOLDER) ? ItemType.FOLDER : ItemType.FILE;
+				LOGGER.log(Level.WARNING, "Can't decrypt metadata of " + type.getName() + " '" + parentItem.getPath() + "/"+title+"'");
+			}
+			
+			return handler.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), title, metadata, driveItem.getFileSize(),
+					FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
+		}
+		catch( CloudsyncException e  )
+		{
+			ItemType type = driveItem.getMimeType().equals(FOLDER) ? ItemType.FOLDER : ItemType.FILE;
+			throw new CloudsyncException( "Can't decrypt name of " + type.getName() + " '"+driveItem.getId()+"' in '" + parentItem.getPath() + "/'" );
+		}
 	}
 
 	private File _searchDriveItem(final Item parentItem, String title) throws CloudsyncException {
