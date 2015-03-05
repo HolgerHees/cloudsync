@@ -48,7 +48,7 @@ import org.apache.commons.lang3.StringUtils;
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
-import cloudsync.model.DuplicateType;
+import cloudsync.model.ExistingBehaviorType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
@@ -102,9 +102,9 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void prepareUpload(final Handler handler, final Item item, final DuplicateType duplicateFlag) {
+	public void prepareUpload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag) {
 
-		if (!duplicateFlag.equals(DuplicateType.RENAME)) {
+		if (!duplicateFlag.equals(ExistingBehaviorType.RENAME)) {
 			return;
 		}
 
@@ -139,15 +139,19 @@ public class LocalFilesystemConnector {
 		}
 	}
 
-	public void upload(final Handler handler, final Item item, final DuplicateType duplicateFlag, final PermissionType permissionType) throws CloudsyncException {
+	public void upload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag, final PermissionType permissionType) throws CloudsyncException {
 
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
 
 		final Path path = Paths.get(_path);
 
 		if (exists(path)) {
+			
+			if( duplicateFlag.equals(ExistingBehaviorType.SKIP) ){
+				return;
+			}
 
-			if (!duplicateFlag.equals(DuplicateType.UPDATE)) {
+			if (!duplicateFlag.equals(ExistingBehaviorType.UPDATE)) {
 				throw new CloudsyncException("Item '" + item.getPath() + "' already exists. Try to specify another '--duplicate' behavior.");
 			}
 

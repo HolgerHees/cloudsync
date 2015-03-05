@@ -56,11 +56,13 @@ public class Crypt {
 	private static boolean ENCRYPT_ARMOR = false;
 
 	private final String passphrase;
+	private boolean showProgress;
 
-	public Crypt(final String passphrase) throws CloudsyncException {
+	public Crypt(final CmdOptions options) throws CloudsyncException {
 
-		this.passphrase = passphrase;
-
+		passphrase = options.getPassphrase();
+		showProgress = options.showProgress();
+		
 		int allowedKeyLength = 0;
 		try {
 			allowedKeyLength = Cipher.getMaxAllowedKeyLength("AES");
@@ -200,7 +202,7 @@ public class Crypt {
     		byte[] buffer = new byte[BUFFER_SIZE];
 			int len = 0;
 			
-    		if( output instanceof FileOutputStream )
+    		if( showProgress && output instanceof FileOutputStream )
     		{
 	    		double current = 0;
 	    		DecimalFormat df = new DecimalFormat("00");

@@ -33,7 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.model.DuplicateType;
+import cloudsync.model.ExistingBehaviorType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
@@ -54,7 +54,7 @@ public class Handler {
 
 	private final Item root;
 	private final List<Item> duplicates;
-	private final DuplicateType duplicateFlag;
+	private final ExistingBehaviorType existingFlag;
 	private final LinkType followlinks;
 	private final PermissionType permissionType;
 
@@ -73,14 +73,14 @@ public class Handler {
 		private int skip = 0;
 	}
 
-	public Handler(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final DuplicateType duplicateFlag,
+	public Handler(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt, final ExistingBehaviorType existingFlag,
 			final LinkType followlinks, final PermissionType permissionType) {
 
 		this.name = name;
 		this.localConnection = localConnection;
 		this.remoteConnection = remoteConnection;
 		this.crypt = crypt;
-		this.duplicateFlag = duplicateFlag;
+		this.existingFlag = existingFlag;
 		this.followlinks = followlinks;
 		this.permissionType = permissionType;
 
@@ -351,10 +351,10 @@ public class Handler {
 				list.addAll(_flatRecursiveChildren(item));
 			}
 			for (final Item item : list) {
-				localConnection.prepareUpload(this, item, duplicateFlag);
+				localConnection.prepareUpload(this, item, ExistingBehaviorType.RENAME);
 				LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
 				localConnection.prepareParent(this, item);
-				localConnection.upload(this, item, duplicateFlag, permissionType);
+				localConnection.upload(this, item, ExistingBehaviorType.RENAME, permissionType);
 			}
 
 			Collections.reverse(list);
@@ -406,10 +406,10 @@ public class Handler {
 
 			if (checkPattern(path, includePatterns, excludePatterns)) {
 
-				localConnection.prepareUpload(this, child, duplicateFlag);
+				localConnection.prepareUpload(this, child, existingFlag);
 				LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
 				if (perform) {
-					localConnection.upload(this, child, duplicateFlag, permissionType);
+					localConnection.upload(this, child, existingFlag, permissionType);
 				}
 			}
 

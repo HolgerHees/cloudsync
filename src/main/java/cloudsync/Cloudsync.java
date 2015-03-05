@@ -100,15 +100,15 @@ public class Cloudsync {
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options.getPassphrase()), options.getDuplicate(), options.getFollowLinks(), options.getPermissionType());
+			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(), options.getPermissionType());
 			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch (type) {
 			case BACKUP:
-				handler.backup(!options.isTestRun(), includePatterns, excludePatterns);
+				handler.backup(!options.isDryRun(), includePatterns, excludePatterns);
 				break;
 			case RESTORE:
-				handler.restore(!options.isTestRun(), includePatterns, excludePatterns);
+				handler.restore(!options.isDryRun(), includePatterns, excludePatterns);
 				break;
 			case LIST:
 				handler.list(includePatterns, excludePatterns);
@@ -139,11 +139,11 @@ public class Cloudsync {
 			cloudsync.start();
 		} catch (UsageException e) {
 			if (!StringUtils.isEmpty(e.getMessage())) {
-				LOGGER.log(Level.INFO, "error: " + e.getMessage() + "\n");
+				LOGGER.log(Level.WARNING, e.getMessage() + "\n");
 			}
 			cloudsync.options.printHelp();
 		} catch (CloudsyncException e) {
-			LOGGER.log(Level.INFO, "error: " + e.getMessage() + "\n");
+			LOGGER.log(Level.WARNING, e.getMessage() + "\n");
 			if (e.getCause() != null) {
 				e.printStackTrace();
 			}

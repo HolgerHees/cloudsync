@@ -20,7 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.exceptions.UsageException;
-import cloudsync.model.DuplicateType;
+import cloudsync.model.ExistingBehaviorType;
 import cloudsync.model.Item;
 import cloudsync.model.LinkType;
 import cloudsync.model.PermissionType;
@@ -48,10 +48,15 @@ public class CmdOptions {
 	private PermissionType permissions;
 	private boolean nocache;
 	private boolean forcestart;
-	private boolean testrun;
+	private boolean dryrun;
+	private boolean showProgress;
+	private boolean askToContinue;
 	private LinkType followlinks;
-	private DuplicateType duplicate;
+	private ExistingBehaviorType existingBehavior;
 	private String remoteConnector;
+	
+	private int retries;
+	private int waitretry;
 
 	public CmdOptions(final String[] args) {
 
@@ -118,11 +123,12 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		description = "Behavior on existing files\n";
-		description += "<stop> - stop immediately - (default for --backup and --restore)\n";
+		description = "Behavior of files that exists localy on --restore\n";
+		description += "<stop> - stop immediately - (default)\n";
 		description += "<update> - replace file\n";
-		description += "<rename> - extend the name with an autoincrement number (default for --clean)";
-		OptionBuilder.withArgName("stop|update|rename");
+		description += "<skip> - skip file\n";
+		description += "<rename> - extend the name with an autoincrement number";
+		OptionBuilder.withArgName("stop|update|skip|rename");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
 		OptionBuilder.withLongOpt("duplicate");
@@ -196,8 +202,36 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Start a 'test' run of --backup or --restore.");
-		OptionBuilder.withLongOpt("test");
+		OptionBuilder.withDescription("Perform a trial run of --backup or --restore with no changes made.");
+		OptionBuilder.withLongOpt("dry-run");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Show progress during upload and encryption.");
+		OptionBuilder.withLongOpt("progress");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Number of network operation retries before an error is thrown (default: 6).");
+		OptionBuilder.withLongOpt("retries");
+		OptionBuilder.withArgName("number");
+		OptionBuilder.hasArg();
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Number of seconds between 2 retries (default: 10).");
+		OptionBuilder.withLongOpt("waitretry");
+		OptionBuilder.withArgName("seconds");
+		OptionBuilder.hasArg();
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Show a command prompt (Y/n) instead of throwing an error on network connection problems.");
+		OptionBuilder.withLongOpt("ask-to-continue");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -251,16 +285,33 @@ public class CmdOptions {
 
 		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
 		followlinks = LinkType.fromName(value);
-		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? DuplicateType.RENAME.getName() : DuplicateType.STOP.getName());
-		duplicate = DuplicateType.fromName(value);
+		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? ExistingBehaviorType.RENAME.getName() : ExistingBehaviorType.STOP.getName());
+		existingBehavior = ExistingBehaviorType.fromName(value);
 		value = getOptionValue(cmd, "permissions", PermissionType.SET.getName());
 		permissions = PermissionType.fromName(value);
 
 		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
 
+		try{
+			retries = Integer.parseInt(getOptionValue(cmd, "retries", "6"));
+		}
+		catch( NumberFormatException e ){
+			retries = 0;
+		}
+		
+		try{
+			waitretry = Integer.parseInt(getOptionValue(cmd, "waitretry", "10"));
+		}
+		catch( NumberFormatException e ){
+			waitretry = 0;
+		}
+
 		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
-		testrun = cmd.hasOption("test");
+		dryrun = cmd.hasOption("dry-run");
+		showProgress = cmd.hasOption("progress");
+		askToContinue = cmd.hasOption("ask-to-continue");
+		
 		String pattern = getOptionValue(cmd, "include", null);
 		if (pattern != null)
 			includePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
@@ -279,13 +330,13 @@ public class CmdOptions {
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || duplicate == null || permissions == null || !baseValid || config == null || !configValid || !logfileValid
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0 || permissions == null || !baseValid || config == null || !configValid || !logfileValid
 				|| !cachefileValid) {
 
 			List<String> messages = new ArrayList<String>();
 			if (cmd.getOptions().length > 0) {
 
-				messages.add("error: missing or wrong options");
+				messages.add("missing or wrong options");
 				if (type == null) {
 					messages.add(" You must specifiy --backup, --restore, --list or --clean");
 				} else if (!baseValid) {
@@ -297,8 +348,14 @@ public class CmdOptions {
 				if (followlinks == null) {
 					messages.add(" Wrong --followlinks behavior set");
 				}
-				if (duplicate == null) {
-					messages.add(" Wrong --duplicate behavior set");
+				if (existingBehavior == null) {
+					messages.add(" Wrong --existing behavior set");
+				}
+				if (retries == 0) {
+					messages.add(" Wrong --retries number set");
+				}
+				if (waitretry == 0) {
+					messages.add(" Wrong --waitretry number set");
 				}
 				if (permissions == null) {
 					messages.add(" Wrong --permissions behavior set");
@@ -396,16 +453,32 @@ public class CmdOptions {
 		return forcestart;
 	}
 
-	public boolean isTestRun() {
-		return testrun;
+	public boolean isDryRun() {
+		return dryrun;
+	}
+
+	public boolean showProgress() {
+		return showProgress;
+	}
+
+	public boolean askToContinue() {
+		return askToContinue;
+	}
+
+	public int getRetries() {
+		return retries;
+	}
+
+	public int getWaitRetry() {
+		return waitretry;
 	}
 
 	public LinkType getFollowLinks() {
 		return followlinks;
 	}
 
-	public DuplicateType getDuplicate() {
-		return duplicate;
+	public ExistingBehaviorType getExistingBehavior() {
+		return existingBehavior;
 	}
 
 	public String getProperty(String key) {
