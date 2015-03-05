@@ -333,10 +333,13 @@ public class CmdOptions {
 		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0 || permissions == null || !baseValid || config == null || !configValid || !logfileValid
 				|| !cachefileValid) {
 
+			int possibleWrongOptions = cmd.getOptions().length;
+			if( cmd.hasOption("help") ) possibleWrongOptions--;
+			
 			List<String> messages = new ArrayList<String>();
-			if (cmd.getOptions().length > 0) {
+			if (possibleWrongOptions > 0) {
 
-				messages.add("missing or wrong options");
+				messages.add("missing or wrong options\nerror(s):");
 				if (type == null) {
 					messages.add(" You must specifiy --backup, --restore, --list or --clean");
 				} else if (!baseValid) {
@@ -373,7 +376,7 @@ public class CmdOptions {
 					messages.add(" --cachefile <path> not valid");
 				}
 			}
-			else if (!configValid) {
+			else if (!cmd.hasOption("help") && !configValid) {
 				messages.add(" No config file found");
 			}
 			throw new UsageException(StringUtils.join(messages, '\n'));
