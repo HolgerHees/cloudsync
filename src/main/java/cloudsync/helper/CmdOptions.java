@@ -349,19 +349,19 @@ public class CmdOptions {
 					messages.add(" Missing --name <name>");
 				}
 				if (followlinks == null) {
-					messages.add(" Wrong --followlinks behavior set");
+					messages.add(" Wrong --followlinks <behavior> set");
 				}
 				if (existingBehavior == null) {
-					messages.add(" Wrong --existing behavior set");
+					messages.add(" Wrong --existing <behavior> set");
 				}
 				if (retries == 0) {
-					messages.add(" Wrong --retries number set");
+					messages.add(" Wrong --retries <number> set");
 				}
 				if (waitretry == 0) {
-					messages.add(" Wrong --waitretry number set");
+					messages.add(" Wrong --waitretry <seconds> set");
 				}
 				if (permissions == null) {
-					messages.add(" Wrong --permissions behavior set");
+					messages.add(" Wrong --permissions <behavior> set");
 				}
 				if (config == null) {
 					messages.add(" Missing --config <path>");
