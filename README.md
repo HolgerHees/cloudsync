@@ -40,44 +40,43 @@ for a complete list of options, see below:
 
 ```
 usage: cloudsync <options>
- -b,--backup <path>                         Create or refresh backup of <path>
- -r,--restore <path>                        Restore a backup into <path>
- -c,--clean <path>                          Repair 'cloudsync*.cache' file and put leftover file into <path>
- -l,--list                                  List the contents of an backup
- -n,--name <name>                           Backup name of --backup, --restore, --clean or --list
-    --config <path>                         Config file path. Default is './config/cloudsync.config'
-    --followlinks <extern|all|none>         How to handle symbolic links
-                                            <extern> - follow symbolic links if the target is outside from the current
-                                            directory hierarchy - (default)
-                                            <all> - follow all symbolic links
-                                            <none> - don't follow any symbolic links
-    --duplicate <stop|update|skip|rename>   Behavior of files that exists localy on --restore
-                                            <stop> - stop immediately - (default)
-                                            <update> - replace file
-                                            <skip> - skip file
-                                            <rename> - extend the name with an autoincrement number
-    --history <count>                       Before remove or update a file or folder move it to a history folder.
-                                            Use a maximum of <count> history folders
-    --include <pattern>                     Include content of --backup, --restore and --list if the path matches the
-                                            regex based ^<pattern>$. Multiple patterns can be separated with an '|'
-                                            character.
-    --exclude <pattern>                     Exclude content of --backup, --restore and --list if the path matches the
-                                            regex based ^<pattern>$. Multiple patterns can be separated with an '|'
-                                            character.
-    --permissions <set|ignore|try>          Behavior how to handle acl permissions during restore
-                                            <set> - set all permissions and ownerships - (default)
-                                            <ignore> - ignores all permissions and ownerships
-                                            <try> - ignores invalid and not assignable permissions and ownerships
-    --nocache                               Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
-    --forcestart                            Ignore a existing pid file. Should only be used after a previous crashed
-                                            job.
-    --logfile <path>                        Log message to <path>
-    --cachefile <path>                      Cache data to <path>
-    --dry-run                               Perform a trial run of --backup or --restore with no changes made.
-    --progress                              Show progress during upload and encryption.
-    --retries <number>                      Number of network operation retries before an error is thrown (default: 6).
-    --waitretry <seconds>                   Number of seconds between 2 retries (default: 10).
-    --ask-to-continue                       Show a command prompt (Y/n) instead of throwing an error on network
-                                            connection problems.
- -h,--help                                  Show this help
+ -b,--backup <path>                        Create or refresh backup of <path>
+ -r,--restore <path>                       Restore a backup into <path>
+ -c,--clean <path>                         Repair 'cloudsync*.cache' file and put leftover file into <path>
+ -l,--list                                 List the contents of an backup
+ -n,--name <name>                          Backup name of --backup, --restore, --clean or --list
+    --config <path>                        Config file path. Default is './config/cloudsync.config'
+    --followlinks <extern|all|none>        How to handle symbolic links
+                                           <extern> - follow symbolic links if the target is outside from the current
+                                           directory hierarchy - (default)
+                                           <all> - follow all symbolic links
+                                           <none> - don't follow any symbolic links
+    --existing <stop|update|skip|rename>   Behavior on files that exists localy during --restore
+                                           <stop> - stop immediately - (default)
+                                           <update> - replace file
+                                           <skip> - skip file
+                                           <rename> - extend the name with an autoincrement number
+    --history <count>                      Before remove or update a file or folder move it to a history folder.
+                                           Use a maximum of <count> history folders
+    --include <pattern>                    Include content of --backup, --restore and --list if the path matches the
+                                           regex based ^<pattern>$. Multiple patterns can be separated with an '|'
+                                           character.
+    --exclude <pattern>                    Exclude content of --backup, --restore and --list if the path matches the
+                                           regex based ^<pattern>$. Multiple patterns can be separated with an '|'
+                                           character.
+    --permissions <set|ignore|try>         Behavior how to handle acl permissions during --restore
+                                           <set> - set all permissions and ownerships - (default)
+                                           <ignore> - ignores all permissions and ownerships
+                                           <try> - ignores invalid and not assignable permissions and ownerships
+    --nocache                              Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
+    --forcestart                           Ignore a existing pid file. Should only be used after a previous crashed job.
+    --dry-run                              Perform a trial run of --backup or --restore with no changes made.
+    --progress                             Show progress during transfer and encryption.
+    --retries <number>                     Number of network operation retries before an error is thrown (default: 6).
+    --waitretry <seconds>                  Number of seconds between 2 retries (default: 10).
+    --ask-to-continue                      Show a command prompt (Y/n) instead of throwing an error on network
+                                           connection problems.
+    --logfile <path>                       Log message to <path>
+    --cachefile <path>                     Cache data to <path>
+ -h,--help
  ```

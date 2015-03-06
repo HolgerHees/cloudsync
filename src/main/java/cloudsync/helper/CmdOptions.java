@@ -123,7 +123,7 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		description = "Behavior of files that exists localy on --restore\n";
+		description = "Behavior on files that exists localy during --restore\n";
 		description += "<stop> - stop immediately - (default)\n";
 		description += "<update> - replace file\n";
 		description += "<skip> - skip file\n";
@@ -131,7 +131,7 @@ public class CmdOptions {
 		OptionBuilder.withArgName("stop|update|skip|rename");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("duplicate");
+		OptionBuilder.withLongOpt("existing");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -162,7 +162,7 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		description = "Behavior how to handle acl permissions during restore\n";
+		description = "Behavior how to handle acl permissions during --restore\n";
 		description += "<set> - set all permissions and ownerships - (default)\n";
 		description += "<ignore> - ignores all permissions and ownerships\n";
 		description += "<try> - ignores invalid and not assignable permissions and ownerships\n";
@@ -186,29 +186,13 @@ public class CmdOptions {
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Log message to <path>");
-		OptionBuilder.withLongOpt("logfile");
-		option = OptionBuilder.create();
-		options.addOption(option);
-		positions.add(option);
-
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Cache data to <path>");
-		OptionBuilder.withLongOpt("cachefile");
-		option = OptionBuilder.create();
-		options.addOption(option);
-		positions.add(option);
-
 		OptionBuilder.withDescription("Perform a trial run of --backup or --restore with no changes made.");
 		OptionBuilder.withLongOpt("dry-run");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Show progress during upload and encryption.");
+		OptionBuilder.withDescription("Show progress during transfer and encryption.");
 		OptionBuilder.withLongOpt("progress");
 		option = OptionBuilder.create();
 		options.addOption(option);
@@ -232,6 +216,22 @@ public class CmdOptions {
 
 		OptionBuilder.withDescription("Show a command prompt (Y/n) instead of throwing an error on network connection problems.");
 		OptionBuilder.withLongOpt("ask-to-continue");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("path");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Log message to <path>");
+		OptionBuilder.withLongOpt("logfile");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withArgName("path");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Cache data to <path>");
+		OptionBuilder.withLongOpt("cachefile");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -285,7 +285,7 @@ public class CmdOptions {
 
 		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
 		followlinks = LinkType.fromName(value);
-		value = getOptionValue(cmd, "duplicate", SyncType.CLEAN.equals(type) ? ExistingBehaviorType.RENAME.getName() : ExistingBehaviorType.STOP.getName());
+		value = getOptionValue(cmd, "existing", SyncType.CLEAN.equals(type) ? ExistingBehaviorType.RENAME.getName() : ExistingBehaviorType.STOP.getName());
 		existingBehavior = ExistingBehaviorType.fromName(value);
 		value = getOptionValue(cmd, "permissions", PermissionType.SET.getName());
 		permissions = PermissionType.fromName(value);
