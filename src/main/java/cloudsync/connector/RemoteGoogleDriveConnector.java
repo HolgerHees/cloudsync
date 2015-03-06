@@ -505,7 +505,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector {
 			{
 				if( parts.size() > 0 )
 				{
-					handler.getDecryptedText( StringUtils.join(parts.toArray()) );
+					metadata = handler.getDecryptedText( StringUtils.join(parts.toArray()) );
 				}
 				else
 				{

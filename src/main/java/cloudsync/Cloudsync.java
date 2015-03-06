@@ -70,7 +70,7 @@ public class Cloudsync {
 
 		String name = options.getName();
 
-		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options.getPath());
+		final LocalFilesystemConnector localConnection = new LocalFilesystemConnector(options);
 
 		Handler handler = null;
 

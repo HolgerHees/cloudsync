@@ -46,6 +46,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
+import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
 import cloudsync.model.ExistingBehaviorType;
@@ -80,8 +81,12 @@ public class LocalFilesystemConnector {
 	private static Map<String, Boolean> principal_state = new HashMap<String, Boolean>();
 
 	private final String localPath;
+	private final boolean showProgress;
 
-	public LocalFilesystemConnector(final String path) {
+	public LocalFilesystemConnector(final CmdOptions options ) {
+		
+		String path = options.getPath();
+		showProgress = options.showProgress();
 
 		if (path != null) {
 
@@ -232,7 +237,7 @@ public class LocalFilesystemConnector {
 					int len = 0;
 
 					// 2 MB
-					if( length > 2097152 )
+					if( showProgress && length > 2097152 )
 					{
 						
 						long lastTime = System.currentTimeMillis();

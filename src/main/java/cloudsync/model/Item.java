@@ -47,7 +47,7 @@ public class Item {
 
 	protected boolean needsMetadataUpgrade;
 
-	private Map<String, Item> children;
+	protected Map<String, Item> children;
 
 	protected Item() {
 	}
@@ -91,6 +91,9 @@ public class Item {
 			item.name = name;
 			item.remoteIdentifier = remoteIdentifier;
 			item.type = isFolder ? ItemType.FOLDER : ItemType.FILE;
+			if (item.type.equals(ItemType.FOLDER)) {
+				item.children = new HashMap<String, Item>();
+			}
 		}
 
 		return item;
