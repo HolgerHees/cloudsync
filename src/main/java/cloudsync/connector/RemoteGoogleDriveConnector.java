@@ -256,7 +256,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 				if (item.isType(ItemType.FILE))
 				{
-
 					final File _parentDriveItem = _getHistoryFolder(item);
 					if (_parentDriveItem != null)
 					{
@@ -327,7 +326,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				final File _parentDriveItem = _getHistoryFolder(item);
 				if (_parentDriveItem != null)
 				{
-
 					final ParentReference parentReference = new ParentReference();
 					parentReference.setId(_parentDriveItem.getId());
 					File driveItem = new File();
@@ -453,7 +451,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		}
 		catch (final IOException e)
 		{
-
 			throw new CloudsyncException("Unexpected error during history cleanup", e);
 		}
 	}
@@ -469,7 +466,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		do
 		{
-
 			FileList files = request.execute();
 
 			final List<File> result = files.getItems();
@@ -630,7 +626,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		try
 		{
 			driveItem = service.files().get(id).execute();
-
 		}
 		catch (HttpResponseException e)
 		{
