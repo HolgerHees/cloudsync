@@ -45,7 +45,6 @@ public class Cloudsync
 
 	private void start() throws CloudsyncException, UsageException
 	{
-
 		options.parse();
 
 		String logpath = options.getLogfilePath();
@@ -155,7 +154,6 @@ public class Cloudsync
 
 	public static void main(final String[] args) throws ParseException
 	{
-
 		final Cloudsync cloudsync = new Cloudsync(args);
 		try
 		{

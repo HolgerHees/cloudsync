@@ -104,7 +104,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public void init(String backupName, CmdOptions options) throws CloudsyncException
 	{
-
 		RemoteGoogleDriveOptions googleDriveOptions = new RemoteGoogleDriveOptions(options, backupName);
 		Integer history = options.getHistory();
 
@@ -162,7 +161,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void storeClientToken(final JsonFactory jsonFactory) throws IOException
 	{
-
 		final StringWriter jsonTrWriter = new StringWriter();
 		final JsonGenerator generator = jsonFactory.createJsonGenerator(jsonTrWriter);
 		generator.serialize(clientToken);
@@ -175,7 +173,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public void upload(final Handler handler, final Item item) throws CloudsyncException, NoSuchFileException
 	{
-
 		initService(handler);
 
 		String title = handler.getLocalEncryptedTitle(item);
@@ -248,7 +245,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -319,7 +315,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public void remove(final Handler handler, final Item item) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -361,7 +356,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public InputStream get(final Handler handler, final Item item) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -387,7 +381,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public List<RemoteItem> readFolder(final Handler handler, final Item parentItem) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -416,7 +409,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	@Override
 	public void cleanHistory(final Handler handler) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		final File backupDriveFolder = _getBackupFolder();
@@ -468,7 +460,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private List<File> _readFolder(final String id) throws IOException
 	{
-
 		final List<File> child_items = new ArrayList<File>();
 
 		final String q = "'" + id + "' in parents and trashed = false";
@@ -497,7 +488,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	private StreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException,
 			NoSuchFileException
 	{
-
 		StreamData data = null;
 		if (with_filedata)
 		{
@@ -538,7 +528,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private RemoteItem _prepareBackupItem(final Item parentItem, final File driveItem, final Handler handler) throws CloudsyncException
 	{
-
 		final List<Property> properties = driveItem.getProperties();
 
 		final Map<Integer, String> metadataMap = new HashMap<Integer, String>();
@@ -608,7 +597,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private File _searchDriveItem(final Item parentItem, String title) throws CloudsyncException
 	{
-
 		int retryCount = 0;
 		do
 		{
@@ -630,7 +618,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private File _getDriveItem(final Item item) throws CloudsyncException, IOException
 	{
-
 		final String id = item.getRemoteIdentifier();
 
 		if (cacheFiles.containsKey(id))
@@ -667,7 +654,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private File _getHistoryFolder(final Item item) throws CloudsyncException, IOException
 	{
-
 		if (historyName == null)
 		{
 			return null;
@@ -693,13 +679,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private File _getBackupFolder() throws CloudsyncException
 	{
-
 		return _getDriveFolder(basePath + SEPARATOR + backupName);
 	}
 
 	private File _getDriveFolder(final String path) throws CloudsyncException
 	{
-
 		int retryCount = 0;
 		do
 		{
@@ -782,13 +766,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void _removeFromCache(final String id)
 	{
-
 		cacheFiles.remove(id);
 	}
 
 	private void _addToCache(final File driveItem, final File parentDriveItem)
 	{
-
 		if (driveItem.getMimeType().equals(FOLDER))
 		{
 			cacheFiles.put(driveItem.getId(), driveItem);
@@ -801,7 +783,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void sleep(long duration)
 	{
-
 		try
 		{
 			Thread.sleep(duration);
@@ -813,7 +794,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private int validateException(String name, Item item, IOException e, int count) throws CloudsyncException
 	{
-
 		if (count < retries)
 		{
 			long currentValidate = System.currentTimeMillis();
@@ -834,7 +814,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		if (askToContinue && e instanceof UnknownHostException)
 		{
-
 			LOGGER.log(Level.WARNING, "Connecting to RemoteHost " + getExceptionMessage(e) + " failed.");
 			String answer = null;
 			while (answer == null || (!"Y".equals(answer) && !"n".equals(answer)))
@@ -898,7 +877,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void refreshCredential() throws IOException
 	{
-
 		if (credential.getExpiresInSeconds() > MIN_TOKEN_REFRESH_TIMEOUT) return;
 
 		if (credential.refreshToken())
@@ -915,7 +893,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void prepareUploader(MediaHttpUploader uploader, long length)
 	{
-
 		int chunkSize = MediaHttpUploader.MINIMUM_CHUNK_SIZE * CHUNK_COUNT;
 		int chunkCount = (int) Math.ceil(length / (double) chunkSize);
 
@@ -934,7 +911,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private class RemoteGoogleDriveProgress implements MediaHttpUploaderProgressListener
 	{
-
 		long								length;
 		private DecimalFormat				df;
 		private long						lastBytes;

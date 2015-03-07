@@ -80,7 +80,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public void init(String backupName, CmdOptions options) throws CloudsyncException
 	{
-
 		RemoteDropboxOptions dropboxOptions = new RemoteDropboxOptions(options, backupName);
 		Integer history = options.getHistory();
 
@@ -135,7 +134,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public void upload(final Handler handler, final Item item) throws CloudsyncException, NoSuchFileException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -183,7 +181,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -219,7 +216,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public void remove(final Handler handler, final Item item) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -251,7 +247,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public InputStream get(final Handler handler, final Item item) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -285,7 +280,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public List<RemoteItem> readFolder(final Handler handler, final Item parentItem) throws CloudsyncException
 	{
-
 		initService(handler);
 
 		int retryCount = 0;
@@ -328,7 +322,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 	@Override
 	public void cleanHistory(final Handler handler) throws CloudsyncException
 	{
-
 		initService(handler);
 		try
 		{
@@ -366,7 +359,6 @@ public class RemoteDropboxConnector implements RemoteConnector
 
 	private RemoteItem _prepareBackupItem(final DbxEntry[] childData, final Handler handler) throws CloudsyncException
 	{
-
 		String encryptedMetadata = null;
 		if (childData[1] != null)
 		{

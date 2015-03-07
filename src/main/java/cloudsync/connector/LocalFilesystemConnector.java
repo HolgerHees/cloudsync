@@ -114,7 +114,6 @@ public class LocalFilesystemConnector
 
 	public void prepareUpload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag)
 	{
-
 		if (!duplicateFlag.equals(ExistingBehaviorType.RENAME))
 		{
 			return;
@@ -138,7 +137,6 @@ public class LocalFilesystemConnector
 
 	public void prepareParent(Handler handler, Item item) throws CloudsyncException
 	{
-
 		if (item.getParent() != null)
 		{
 			Item parentItem = item.getParent();
@@ -159,7 +157,6 @@ public class LocalFilesystemConnector
 	public void upload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag, final PermissionType permissionType)
 			throws CloudsyncException
 	{
-
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
 
 		final Path path = Paths.get(_path);
@@ -191,7 +188,6 @@ public class LocalFilesystemConnector
 
 		if (item.isType(ItemType.FOLDER))
 		{
-
 			if (!exists(path))
 			{
 				try
@@ -206,7 +202,6 @@ public class LocalFilesystemConnector
 		}
 		else
 		{
-
 			if (item.getParent() != null)
 			{
 				final Path parentPath = Paths.get(localPath + Item.SEPARATOR + item.getParent().getPath());
@@ -248,7 +243,6 @@ public class LocalFilesystemConnector
 			}
 			else if (item.isType(ItemType.FILE))
 			{
-
 				InputStream remoteStream = null;
 				InputStream remoteDecryptedStream = null;
 				OutputStream outputStream = null;
@@ -478,7 +472,6 @@ public class LocalFilesystemConnector
 
 	public File[] readFolder(final Item item)
 	{
-
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
 
 		// System.out.println(currentPath);
@@ -496,7 +489,6 @@ public class LocalFilesystemConnector
 
 	public Item getItem(File file, final LinkType followlinks) throws CloudsyncException, NoSuchFileException
 	{
-
 		try
 		{
 			Path path = file.toPath();
@@ -640,7 +632,6 @@ public class LocalFilesystemConnector
 
 	private List<AclEntry> getLocalAclEntries(ItemType type, List<AclEntry> parentAclList, List<AclEntry> childAclList)
 	{
-
 		List<AclEntry> aclList = new ArrayList<AclEntry>();
 
 		for (AclEntry childEntry : childAclList)
@@ -743,7 +734,6 @@ public class LocalFilesystemConnector
 
 	public StreamData getFileBinary(final Item item) throws CloudsyncException
 	{
-
 		File file = new File(localPath + Item.SEPARATOR + item.getPath());
 
 		InputStream checksumInputStream = null;
