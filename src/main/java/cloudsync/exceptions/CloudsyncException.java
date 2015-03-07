@@ -1,14 +1,16 @@
 package cloudsync.exceptions;
 
-public class CloudsyncException extends Exception {
+public class CloudsyncException extends Exception
+{
+	private static final long	serialVersionUID	= 5775239254896263691L;
 
-	private static final long serialVersionUID = 5775239254896263691L;
-
-	public CloudsyncException(final String message) {
+	public CloudsyncException(final String message)
+	{
 		super(message);
 	}
 
-	public CloudsyncException(final String message, final Exception e) {
+	public CloudsyncException(final String message, final Exception e)
+	{
 		super(message, e);
 	}
 }

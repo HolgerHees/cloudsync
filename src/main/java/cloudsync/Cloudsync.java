@@ -25,14 +25,14 @@ import cloudsync.logging.LogfileFormatter;
 import cloudsync.logging.LogfileHandler;
 import cloudsync.model.SyncType;
 
-public class Cloudsync {
+public class Cloudsync
+{
+	private final static Logger	LOGGER	= Logger.getLogger(Cloudsync.class.getName());
 
-	private final static Logger LOGGER = Logger.getLogger(Cloudsync.class.getName());
+	private final CmdOptions	options;
 
-	private final CmdOptions options;
-
-	public Cloudsync(final String[] args) {
-
+	public Cloudsync(final String[] args)
+	{
 		this.options = new CmdOptions(args);
 
 		final Logger logger = Logger.getLogger("cloudsync");
@@ -43,27 +43,34 @@ public class Cloudsync {
 		logger.setUseParentHandlers(false);
 	}
 
-	private void start() throws CloudsyncException, UsageException {
+	private void start() throws CloudsyncException, UsageException
+	{
 
 		options.parse();
 
 		String logpath = options.getLogfilePath();
-		if (logpath != null) {
-
+		if (logpath != null)
+		{
 			final Logger logger = Logger.getLogger("cloudsync");
 			FileHandler fh;
-			try {
+			try
+			{
 				Path logfilePath = Paths.get(logpath);
-				if (Files.exists(logfilePath)) {
+				if (Files.exists(logfilePath))
+				{
 					Path preservedPath = Paths.get(logpath + ".1");
 					Files.move(logfilePath, preservedPath, StandardCopyOption.REPLACE_EXISTING);
 				}
 				fh = new LogfileHandler(logpath);
 				fh.setFormatter(new LogfileFormatter());
 				logger.addHandler(fh);
-			} catch (SecurityException e) {
+			}
+			catch (SecurityException e)
+			{
 				throw new CloudsyncException("Unexpected error on logfile creation", e);
-			} catch (IOException e) {
+			}
+			catch (IOException e)
+			{
 				throw new CloudsyncException("Unexpected error on logfile creation", e);
 			}
 		}
@@ -74,15 +81,22 @@ public class Cloudsync {
 
 		Handler handler = null;
 
-		try {
-
+		try
+		{
 			String remoteConnectorName = options.getRemoteConnector();
 			RemoteConnector remoteConnector = null;
-			try {
+			try
+			{
 				remoteConnector = (RemoteConnector) Class.forName("cloudsync.connector.Remote" + remoteConnectorName + "Connector").newInstance();
-			} catch (IllegalAccessException e) {
-			} catch (InstantiationException e) {
-			} catch (ClassNotFoundException e) {
+			}
+			catch (IllegalAccessException e)
+			{
+			}
+			catch (InstantiationException e)
+			{
+			}
+			catch (ClassNotFoundException e)
+			{
 				throw new CloudsyncException("Remote connector '" + remoteConnectorName + "' not found", e);
 			}
 
@@ -92,59 +106,74 @@ public class Cloudsync {
 
 			SyncType type = options.getType();
 			String[] includePatterns = options.getIncludePatterns();
-			if (includePatterns != null) {
+			if (includePatterns != null)
+			{
 				LOGGER.log(Level.FINEST, "use include pattern: " + "[^" + StringUtils.join(includePatterns, "$] | [$") + "$]");
 			}
 			String[] excludePatterns = options.getExcludePatterns();
-			if (excludePatterns != null) {
+			if (excludePatterns != null)
+			{
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(), options.getPermissionType());
+			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(),
+					options.getPermissionType());
 			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
-			switch (type) {
-			case BACKUP:
-				handler.backup(!options.isDryRun(), includePatterns, excludePatterns);
-				break;
-			case RESTORE:
-				handler.restore(!options.isDryRun(), includePatterns, excludePatterns);
-				break;
-			case LIST:
-				handler.list(includePatterns, excludePatterns);
-				break;
-			case CLEAN:
-				handler.clean();
-				break;
+			switch ( type )
+			{
+				case BACKUP:
+					handler.backup(!options.isDryRun(), includePatterns, excludePatterns);
+					break;
+				case RESTORE:
+					handler.restore(!options.isDryRun(), includePatterns, excludePatterns);
+					break;
+				case LIST:
+					handler.list(includePatterns, excludePatterns);
+					break;
+				case CLEAN:
+					handler.clean();
+					break;
 			}
 
 			final long end = System.currentTimeMillis();
 
 			LOGGER.log(Level.INFO, "runtime: " + ((end - start) / 1000.0f) + " seconds");
-		} finally {
-
-			try {
-				if (handler != null)
-					handler.finalize();
-			} catch (CloudsyncException e) {
+		}
+		finally
+		{
+			try
+			{
+				if (handler != null) handler.finalize();
+			}
+			catch (CloudsyncException e)
+			{
 				throw e;
 			}
 		}
 	}
 
-	public static void main(final String[] args) throws ParseException {
+	public static void main(final String[] args) throws ParseException
+	{
 
 		final Cloudsync cloudsync = new Cloudsync(args);
-		try {
+		try
+		{
 			cloudsync.start();
-		} catch (UsageException e) {
-			if (!StringUtils.isEmpty(e.getMessage())) {
+		}
+		catch (UsageException e)
+		{
+			if (!StringUtils.isEmpty(e.getMessage()))
+			{
 				LOGGER.log(Level.WARNING, e.getMessage() + "\n");
 			}
 			cloudsync.options.printHelp();
-		} catch (CloudsyncException e) {
+		}
+		catch (CloudsyncException e)
+		{
 			LOGGER.log(Level.WARNING, e.getMessage() + "\n");
-			if (e.getCause() != null) {
+			if (e.getCause() != null)
+			{
 				e.printStackTrace();
 			}
 		}

@@ -6,18 +6,21 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Helper;
 
-public class RemoteGoogleDriveOptions {
+public class RemoteGoogleDriveOptions
+{
+	private String	clientID		= null;
+	private String	clientSecret	= null;
+	private String	clientTokenPath	= null;
+	private String	clientBasePath	= null;
 
-	private String clientID = null;
-	private String clientSecret = null;
-	private String clientTokenPath = null;
-	private String clientBasePath = null;
-
-	public RemoteGoogleDriveOptions(CmdOptions options, String name) throws CloudsyncException {
-
-		final String[] propertyNames = new String[] { "GOOGLE_DRIVE_CLIENT_ID", "GOOGLE_DRIVE_CLIENT_SECRET", "GOOGLE_DRIVE_CLIENT_TOKEN_PATH", "GOOGLE_DRIVE_DIR" };
-		for (final String propertyName : propertyNames) {
-			if (StringUtils.isEmpty(options.getProperty(propertyName))) {
+	public RemoteGoogleDriveOptions(CmdOptions options, String name) throws CloudsyncException
+	{
+		final String[] propertyNames = new String[] { "GOOGLE_DRIVE_CLIENT_ID", "GOOGLE_DRIVE_CLIENT_SECRET", "GOOGLE_DRIVE_CLIENT_TOKEN_PATH",
+				"GOOGLE_DRIVE_DIR" };
+		for (final String propertyName : propertyNames)
+		{
+			if (StringUtils.isEmpty(options.getProperty(propertyName)))
+			{
 				throw new CloudsyncException("'" + propertyName + "' is not configured");
 			}
 		}
@@ -28,19 +31,23 @@ public class RemoteGoogleDriveOptions {
 		clientBasePath = options.getProperty("GOOGLE_DRIVE_DIR");
 	}
 
-	public String getClientID() {
+	public String getClientID()
+	{
 		return clientID;
 	}
 
-	public String getClientSecret() {
+	public String getClientSecret()
+	{
 		return clientSecret;
 	}
 
-	public String getClientTokenPath() {
+	public String getClientTokenPath()
+	{
 		return clientTokenPath;
 	}
 
-	public String getClientBasePath() {
+	public String getClientBasePath()
+	{
 		return clientBasePath;
 	}
 }

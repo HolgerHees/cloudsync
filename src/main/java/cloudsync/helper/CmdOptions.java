@@ -26,40 +26,40 @@ import cloudsync.model.LinkType;
 import cloudsync.model.PermissionType;
 import cloudsync.model.SyncType;
 
-public class CmdOptions {
+public class CmdOptions
+{
+	private final Options			options;
+	private final List<Option>		positions;
+	private final String[]			args;
 
-	private final Options options;
-	private final List<Option> positions;
-	private final String[] args;
+	private String					passphrase;
 
-	private String passphrase;
+	private Properties				prop;
+	private SyncType				type;
+	private String					path;
+	private String					name;
+	private Integer					history;
+	private String[]				includePatterns;
+	private String[]				excludePatterns;
+	private String					logfilePath;
+	private String					cachefilePath;
+	private String					lockfilePath;
+	private String					pidfilePath;
+	private PermissionType			permissions;
+	private boolean					nocache;
+	private boolean					forcestart;
+	private boolean					dryrun;
+	private boolean					showProgress;
+	private boolean					askToContinue;
+	private LinkType				followlinks;
+	private ExistingBehaviorType	existingBehavior;
+	private String					remoteConnector;
 
-	private Properties prop;
-	private SyncType type;
-	private String path;
-	private String name;
-	private Integer history;
-	private String[] includePatterns;
-	private String[] excludePatterns;
-	private String logfilePath;
-	private String cachefilePath;
-	private String lockfilePath;
-	private String pidfilePath;
-	private PermissionType permissions;
-	private boolean nocache;
-	private boolean forcestart;
-	private boolean dryrun;
-	private boolean showProgress;
-	private boolean askToContinue;
-	private LinkType followlinks;
-	private ExistingBehaviorType existingBehavior;
-	private String remoteConnector;
-	
-	private int retries;
-	private int waitretry;
+	private int						retries;
+	private int						waitretry;
 
-	public CmdOptions(final String[] args) {
-
+	public CmdOptions(final String[] args)
+	{
 		this.args = args;
 
 		positions = new ArrayList<Option>();
@@ -148,7 +148,8 @@ public class CmdOptions {
 
 		OptionBuilder.withArgName("pattern");
 		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder
+				.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
 		OptionBuilder.withLongOpt("include");
 		option = OptionBuilder.create();
 		options.addOption(option);
@@ -156,7 +157,8 @@ public class CmdOptions {
 
 		OptionBuilder.withArgName("pattern");
 		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
+		OptionBuilder
+				.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
 		OptionBuilder.withLongOpt("exclude");
 		option = OptionBuilder.create();
 		options.addOption(option);
@@ -243,42 +245,55 @@ public class CmdOptions {
 		positions.add(option);
 	}
 
-	public void parse() throws UsageException, CloudsyncException {
-
+	public void parse() throws UsageException, CloudsyncException
+	{
 		final CommandLineParser parser = new GnuParser();
 		CommandLine cmd;
-		try {
+		try
+		{
 			cmd = parser.parse(options, args);
-		} catch (ParseException e) {
-
+		}
+		catch (ParseException e)
+		{
 			throw new UsageException(e.getMessage());
 		}
 
 		type = null;
 		path = null;
-		if ((path = cmd.getOptionValue(SyncType.BACKUP.getName())) != null) {
+		if ((path = cmd.getOptionValue(SyncType.BACKUP.getName())) != null)
+		{
 			type = SyncType.BACKUP;
-		} else if ((path = cmd.getOptionValue(SyncType.RESTORE.getName())) != null) {
+		}
+		else if ((path = cmd.getOptionValue(SyncType.RESTORE.getName())) != null)
+		{
 			type = SyncType.RESTORE;
-		} else if ((path = cmd.getOptionValue(SyncType.CLEAN.getName())) != null) {
+		}
+		else if ((path = cmd.getOptionValue(SyncType.CLEAN.getName())) != null)
+		{
 			type = SyncType.CLEAN;
-		} else if (cmd.hasOption(SyncType.LIST.getName())) {
+		}
+		else if (cmd.hasOption(SyncType.LIST.getName()))
+		{
 			type = SyncType.LIST;
 		}
 
 		String config = cmd.getOptionValue("config", "." + Item.SEPARATOR + "config" + Item.SEPARATOR + "cloudsync.config");
-		if (config.startsWith("." + Item.SEPARATOR)) {
+		if (config.startsWith("." + Item.SEPARATOR))
+		{
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
 
 		boolean configValid = config != null && new File(config).isFile();
 		prop = new Properties();
-		try {
+		try
+		{
 			prop.load(new FileInputStream(config));
-		} catch (final IOException e) {
+		}
+		catch (final IOException e)
+		{
 			configValid = false;
 		}
-		
+
 		name = getOptionValue(cmd, "name", null);
 
 		remoteConnector = prop.getProperty("REMOTE_CONNECTOR");
@@ -292,17 +307,21 @@ public class CmdOptions {
 
 		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
 
-		try{
+		try
+		{
 			retries = Integer.parseInt(getOptionValue(cmd, "retries", "6"));
 		}
-		catch( NumberFormatException e ){
+		catch (NumberFormatException e)
+		{
 			retries = 0;
 		}
-		
-		try{
+
+		try
+		{
 			waitretry = Integer.parseInt(getOptionValue(cmd, "waitretry", "10"));
 		}
-		catch( NumberFormatException e ){
+		catch (NumberFormatException e)
+		{
 			waitretry = 0;
 		}
 
@@ -311,15 +330,14 @@ public class CmdOptions {
 		dryrun = cmd.hasOption("dry-run");
 		showProgress = cmd.hasOption("progress");
 		askToContinue = cmd.hasOption("ask-to-continue");
-		
-		String pattern = getOptionValue(cmd, "include", null);
-		if (pattern != null)
-			includePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
-		pattern = getOptionValue(cmd, "exclude", null);
-		if (pattern != null)
-			excludePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
 
-		if (!StringUtils.isEmpty(name)) {
+		String pattern = getOptionValue(cmd, "include", null);
+		if (pattern != null) includePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
+		pattern = getOptionValue(cmd, "exclude", null);
+		if (pattern != null) excludePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
+
+		if (!StringUtils.isEmpty(name))
+		{
 			logfilePath = Helper.preparePath(getOptionValue(cmd, "logfile", null), name);
 			cachefilePath = Helper.preparePath(getOptionValue(cmd, "cachefile", null), name);
 			pidfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".pid";
@@ -330,85 +348,100 @@ public class CmdOptions {
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0 || permissions == null || !baseValid || config == null || !configValid || !logfileValid
-				|| !cachefileValid) {
-
+		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0
+				|| permissions == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid)
+		{
 			int possibleWrongOptions = cmd.getOptions().length;
-			if( cmd.hasOption("help") ) possibleWrongOptions--;
-			
-			List<String> messages = new ArrayList<String>();
-			if (possibleWrongOptions > 0) {
+			if (cmd.hasOption("help")) possibleWrongOptions--;
 
+			List<String> messages = new ArrayList<String>();
+			if (possibleWrongOptions > 0)
+			{
 				messages.add("missing or wrong options\nerror(s):");
-				if (type == null) {
+				if (type == null)
+				{
 					messages.add(" You must specifiy --backup, --restore, --list or --clean");
-				} else if (!baseValid) {
+				}
+				else if (!baseValid)
+				{
 					messages.add(" --" + type.getName() + " <path> not valid");
 				}
-				if (name == null) {
+				if (name == null)
+				{
 					messages.add(" Missing --name <name>");
 				}
-				if (followlinks == null) {
+				if (followlinks == null)
+				{
 					messages.add(" Wrong --followlinks <behavior> set");
 				}
-				if (existingBehavior == null) {
+				if (existingBehavior == null)
+				{
 					messages.add(" Wrong --existing <behavior> set");
 				}
-				if (retries == 0) {
+				if (retries == 0)
+				{
 					messages.add(" Wrong --retries <number> set");
 				}
-				if (waitretry == 0) {
+				if (waitretry == 0)
+				{
 					messages.add(" Wrong --waitretry <seconds> set");
 				}
-				if (permissions == null) {
+				if (permissions == null)
+				{
 					messages.add(" Wrong --permissions <behavior> set");
 				}
-				if (config == null) {
+				if (config == null)
+				{
 					messages.add(" Missing --config <path>");
-				} 
-				else if (!configValid) {
+				}
+				else if (!configValid)
+				{
 					messages.add(" --config <path> not valid");
 				}
-				if (!logfileValid) {
+				if (!logfileValid)
+				{
 					messages.add(" --logfile <path> not valid");
 				}
-				if (!cachefileValid) {
+				if (!cachefileValid)
+				{
 					messages.add(" --cachefile <path> not valid");
 				}
 			}
-			else if (!cmd.hasOption("help") && !configValid) {
+			else if (!cmd.hasOption("help") && !configValid)
+			{
 				messages.add(" No config file found");
 			}
 			throw new UsageException(StringUtils.join(messages, '\n'));
 		}
-		
+
 		passphrase = prop.getProperty("PASSPHRASE");
-		if (StringUtils.isEmpty(passphrase)) {
+		if (StringUtils.isEmpty(passphrase))
+		{
 			throw new CloudsyncException("'PASSPHRASE' is not configured");
 		}
 	}
 
-	public String getOptionValue(CommandLine cmd, String key, String defaultValue) {
+	public String getOptionValue(CommandLine cmd, String key, String defaultValue)
+	{
 		String value = cmd.getOptionValue(key);
-		if (!StringUtils.isEmpty(value))
-			return value;
+		if (!StringUtils.isEmpty(value)) return value;
 		value = prop.getProperty(key.toUpperCase());
-		if (!StringUtils.isEmpty(value))
-			return value;
+		if (!StringUtils.isEmpty(value)) return value;
 		return defaultValue;
 	}
 
-	public void printHelp() {
+	public void printHelp()
+	{
 		final HelpFormatter formatter = new HelpFormatter();
 		formatter.setWidth(120);
-		formatter.setOptionComparator(new Comparator<Option>() {
+		formatter.setOptionComparator(new Comparator<Option>()
+		{
 
 			@Override
-			public int compare(Option o1, Option o2) {
-				if (positions.indexOf(o1) < positions.indexOf(o2))
-					return -1;
-				if (positions.indexOf(o1) > positions.indexOf(o2))
-					return 1;
+			public int compare(Option o1, Option o2)
+			{
+				if (positions.indexOf(o1) < positions.indexOf(o2)) return -1;
+				if (positions.indexOf(o1) > positions.indexOf(o2)) return 1;
 				return 0;
 			}
 		});
@@ -416,95 +449,118 @@ public class CmdOptions {
 		formatter.printHelp("cloudsync <options>", options);
 	}
 
-	public String getPath() {
+	public String getPath()
+	{
 		return path;
 	}
 
-	public SyncType getType() {
+	public SyncType getType()
+	{
 		return type;
 	}
 
-	public String getName() {
+	public String getName()
+	{
 		return name;
 	}
 
-	public String[] getIncludePatterns() {
+	public String[] getIncludePatterns()
+	{
 		return includePatterns;
 	}
 
-	public String[] getExcludePatterns() {
+	public String[] getExcludePatterns()
+	{
 		return excludePatterns;
 	}
 
-	public Integer getHistory() {
+	public Integer getHistory()
+	{
 		return history;
 	}
 
-	public String getLogfilePath() {
+	public String getLogfilePath()
+	{
 		return logfilePath;
 	}
 
-	public PermissionType getPermissionType() {
+	public PermissionType getPermissionType()
+	{
 		return permissions;
 	}
 
-	public boolean getNoCache() {
+	public boolean getNoCache()
+	{
 		return nocache;
 	}
 
-	public boolean getForceStart() {
+	public boolean getForceStart()
+	{
 		return forcestart;
 	}
 
-	public boolean isDryRun() {
+	public boolean isDryRun()
+	{
 		return dryrun;
 	}
 
-	public boolean showProgress() {
+	public boolean showProgress()
+	{
 		return showProgress;
 	}
 
-	public boolean askToContinue() {
+	public boolean askToContinue()
+	{
 		return askToContinue;
 	}
 
-	public int getRetries() {
+	public int getRetries()
+	{
 		return retries;
 	}
 
-	public int getWaitRetry() {
+	public int getWaitRetry()
+	{
 		return waitretry;
 	}
 
-	public LinkType getFollowLinks() {
+	public LinkType getFollowLinks()
+	{
 		return followlinks;
 	}
 
-	public ExistingBehaviorType getExistingBehavior() {
+	public ExistingBehaviorType getExistingBehavior()
+	{
 		return existingBehavior;
 	}
 
-	public String getProperty(String key) {
+	public String getProperty(String key)
+	{
 		return prop.getProperty(key);
 	}
 
-	public String getCacheFile() {
+	public String getCacheFile()
+	{
 		return cachefilePath;
 	}
 
-	public String getLockFile() {
+	public String getLockFile()
+	{
 		return lockfilePath;
 	}
 
-	public String getPIDFile() {
+	public String getPIDFile()
+	{
 		return pidfilePath;
 	}
 
-	public String getPassphrase() {
+	public String getPassphrase()
+	{
 		return passphrase;
 	}
 
-	public String getRemoteConnector() {
+	public String getRemoteConnector()
+	{
 		return remoteConnector;
 	}
 }

@@ -10,8 +10,8 @@ import cloudsync.helper.Handler;
 import cloudsync.model.Item;
 import cloudsync.model.RemoteItem;
 
-public interface RemoteConnector {
-
+public interface RemoteConnector
+{
 	public void init(String backupName, CmdOptions options) throws CloudsyncException;
 
 	public List<RemoteItem> readFolder(Handler handler, Item parentItem) throws CloudsyncException;

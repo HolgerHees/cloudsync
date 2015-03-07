@@ -1,25 +1,27 @@
 package cloudsync.model;
 
-public enum ExistingBehaviorType {
+public enum ExistingBehaviorType
+{
+	STOP("stop"), UPDATE("update"), SKIP("skip"), RENAME("rename");
 
-	STOP("stop"), UPDATE("update"),SKIP("skip"), RENAME("rename");
+	private String	name;
 
-	private String name;
-
-	private ExistingBehaviorType(final String name) {
+	private ExistingBehaviorType(final String name)
+	{
 		this.name = name;
 	}
 
-	public String getName() {
-
+	public String getName()
+	{
 		return name;
 	}
 
-	public static ExistingBehaviorType fromName(final String name) {
-
-		for (final ExistingBehaviorType type : ExistingBehaviorType.values()) {
-
-			if (!type.name.equals(name)) {
+	public static ExistingBehaviorType fromName(final String name)
+	{
+		for (final ExistingBehaviorType type : ExistingBehaviorType.values())
+		{
+			if (!type.name.equals(name))
+			{
 				continue;
 			}
 
