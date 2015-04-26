@@ -305,7 +305,7 @@ public class CmdOptions
 		value = getOptionValue(cmd, "permissions", PermissionType.SET.getName());
 		permissions = PermissionType.fromName(value);
 
-		history = (type != null && type.equals("backup")) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
+		history = SyncType.BACKUP.equals(type) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
 
 		try
 		{
