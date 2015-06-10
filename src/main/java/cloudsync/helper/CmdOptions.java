@@ -340,8 +340,11 @@ public class CmdOptions
 		{
 			logfilePath = Helper.preparePath(getOptionValue(cmd, "logfile", null), name);
 			cachefilePath = Helper.preparePath(getOptionValue(cmd, "cachefile", null), name);
-			pidfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".pid";
-			lockfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".lock";
+			if( !StringUtils.isEmpty(cachefilePath))
+			{
+				pidfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".pid";
+				lockfilePath = cachefilePath.substring(0, cachefilePath.lastIndexOf(".")) + ".lock";
+			}
 		}
 
 		final boolean baseValid = SyncType.LIST.equals(type) || (path != null && new File(path).isDirectory());

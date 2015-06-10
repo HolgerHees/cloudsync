@@ -20,6 +20,8 @@ public class Helper
 	
 	public static String preparePath(String path, String name)
 	{
+		if( path == null ) return null;
+		
 		if (path.startsWith("." + Item.SEPARATOR))
 		{
 			path = System.getProperty("user.dir") + path.substring(1);
