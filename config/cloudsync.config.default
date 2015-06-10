@@ -1,17 +1,22 @@
-# your master password
+# your master password used for encrypt/decrypt
 PASSPHRASE=
 
 # use google drive as target
 REMOTE_CONNECTOR=GoogleDrive
 
-# google drive client id
+#
+# Use either 'Installed Applications Auth' or 'Service Account Auth' sections below
+#
+
+# Installed Applications Auth - https://developers.google.com/api-client-library/java/google-api-java-client/oauth2#installed_applications
 GOOGLE_DRIVE_CLIENT_ID=
-
-# google drive client secret
 GOOGLE_DRIVE_CLIENT_SECRET=
-
-# path to store the curently used client token
 GOOGLE_DRIVE_CLIENT_TOKEN_PATH=./.cloudsync.token
+
+# Service Account Auth - https://developers.google.com/api-client-library/java/google-api-java-client/oauth2#service_accounts
+GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_DRIVE_SERVICE_ACCOUNT_USER=
+GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY_P12_PATH=
 
 # backup target on the remote server
 GOOGLE_DRIVE_DIR=/backup

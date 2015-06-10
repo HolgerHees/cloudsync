@@ -13,6 +13,11 @@ public class Helper
 		return text;
 	}
 
+	public static String preparePath(String path)
+	{
+		return preparePath(path, "");
+	}
+	
 	public static String preparePath(String path, String name)
 	{
 		if (path.startsWith("." + Item.SEPARATOR))

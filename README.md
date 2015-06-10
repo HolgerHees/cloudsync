@@ -1,9 +1,8 @@
-cloudsync
-=========
+# cloudsync
 
 Sync a local filesystem on linux, windows and osx incremental and encrypted with google drive simliar to rsync. You can also restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
 
-Other compareable backup solution like [duplicity](http://duplicity.nongnu.org) are uploading one big encrypted 'base' archive with additional delta archive files. After some month you must upload a new fresh 'base' archive to avoid hundred of delta files. This is problematic for private async dsl connections. To solve these issues each file is encrypted and uploaded separately.
+Other compareable backup solutions like [duplicity](http://duplicity.nongnu.org) upload one big encrypted 'base' archive with additional delta archive files. After a few months you must upload a new fresh 'base' archive to avoid hundreds of delta files. This approach, while widely used in various backup solutions, is problematic for private async DSL connections. To solve these issues each file is encrypted and uploaded separately.
 
 To get a first impression you should take a look at [this screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
@@ -24,11 +23,52 @@ Supported Cloud Services are:
 
 To provide additional cloud targets like Amazon Cloud Drive or Microsoft OneDrive just implement 6 functions from the interface [Connector.java](https://github.com/HolgerHees/cloudsync/tree/master/src/main/java/cloudsync/connector/RemoteConnector.java).
 
-**java >= 7 and Java Cryptography Extension (JCE) is required**
+## Requirements
 
-To use it, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set your PASSPHRASE, GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET. To get the last two parameter follow https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials. Finally to enable the Google Drive API follow https://github.com/HolgerHees/cloudsync/wiki/Google-Drive-API.
+1. Java >= 7
+2. [Java Cryptography Extension (JCE)](http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.html)
+3. [Maven](http://maven.apache.org/download.cgi)
 
-to create a backup of '/data', call:
+## Install
+
+```bash
+git clone https://github.com/HolgerHees/cloudsync.git
+cd cloudsync
+mvn install
+```
+
+## Config
+
+To use, copy ```'config/cloudsync.config.default'``` to ```'config/cloudsync.config'``` and set the following;
+
+- `PASSPHRASE`: your master password used for encrypt/decrypt
+
+There are two authentication options, either using an Installed Application or Service Account.
+
+Both options require that you [enable the Google Drive API](https://github.com/HolgerHees/cloudsync/wiki/Google-Drive-API). 
+
+### Installed Application
+
+Follow [these instructions](https://github.com/HolgerHees/cloudsync/wiki/Google-Client-Credentials) to set the following;
+
+- `GOOGLE_DRIVE_CLIENT_ID`
+- `GOOGLE_DRIVE_CLIENT_SECRET`
+
+### Service Account
+
+This process requires more configuration however will ensure you can run unattended.
+
+1. [Create Service Account](https://developers.google.com/identity/protocols/OAuth2ServiceAccount). You must ensure that you [delegate domain-wide authority to your service account](https://developers.google.com/drive/web/delegation#delegate_domain-wide_authority_to_your_service_account).
+2. Download P12 keyfile.
+3. Set the following in the configuration file.
+
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL` - ie.. `<some-id>@developer.gserviceaccount.com`.
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_USER` - The Google Drive user, ie.. `you@yourdomain.com`.
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY_P12_PATH` - The full or relative path to your P12 file.
+
+## Usage
+
+To create a backup of '/data', call:
 
 ```./cloudsync --backup /data --name dataBackup```
 
