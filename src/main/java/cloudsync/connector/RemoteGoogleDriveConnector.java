@@ -11,6 +11,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
+import java.security.GeneralSecurityException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -119,43 +120,61 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		this.backupName = backupName;
 		this.historyCount = history;
 		this.historyName = history > 0 ? backupName + " " + new SimpleDateFormat("yyyy.MM.dd_HH.mm.ss").format(new Date()) : null;
-
+		
 		final HttpTransport httpTransport = new NetHttpTransport();
 		final JsonFactory jsonFactory = new JacksonFactory();
 
-		final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, googleDriveOptions.getClientID(),
-				googleDriveOptions.getClientSecret(), Arrays.asList(DriveScopes.DRIVE)).setAccessType("offline").setApprovalPrompt("auto").build();
-
-		this.clientTokenPath = Paths.get(googleDriveOptions.getClientTokenPath());
-
-		try
-		{
-			final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile()) : null;
-
-			credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory())
-					.setClientSecrets(googleDriveOptions.getClientID(), googleDriveOptions.getClientSecret()).build();
-
-			if (StringUtils.isEmpty(clientTokenAsJson))
-			{
-				final String url = flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URL).build();
-				System.out.println("Please open the following URL in your browser, copy the authorization code and enter below.");
-				System.out.println("\n" + url + "\n");
-				final String code = new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
-
-				clientToken = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URL).execute();
-
-				storeClientToken(jsonFactory);
-				LOGGER.log(Level.INFO, "client token stored in '" + this.clientTokenPath + "'");
+		if (StringUtils.isNotEmpty(googleDriveOptions.getServiceAccountUser())) {
+			// Service Account auth - https://developers.google.com/api-client-library/java/google-api-java-client/oauth2#service_accounts
+			try {
+				credential = new GoogleCredential.Builder()
+					.setTransport(httpTransport)
+					.setJsonFactory(jsonFactory)
+					.setServiceAccountId(googleDriveOptions.getServiceAccountEmail())
+					.setServiceAccountScopes(Arrays.asList(DriveScopes.DRIVE))
+					.setServiceAccountUser(googleDriveOptions.getServiceAccountUser())
+					.setServiceAccountPrivateKeyFromP12File(new java.io.File(googleDriveOptions.getServiceAccountPrivateKeyP12Path()))
+					.build();
+			} catch (GeneralSecurityException | IOException e) {
+				throw new CloudsyncException("Can't init remote google drive connector", e);
 			}
-			else
+
+		} else {
+			// Installed Applications auth - https://developers.google.com/api-client-library/java/google-api-java-client/oauth2#installed_applications
+			final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, googleDriveOptions.getClientID(),
+					googleDriveOptions.getClientSecret(), Arrays.asList(DriveScopes.DRIVE)).setAccessType("offline").setApprovalPrompt("auto").build();
+			
+			this.clientTokenPath = Paths.get(googleDriveOptions.getClientTokenPath());
+			
+			try
 			{
-				clientToken = jsonFactory.createJsonParser(clientTokenAsJson).parse(GoogleTokenResponse.class);
+				final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile()) : null;
+				
+				credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory())
+						.setClientSecrets(googleDriveOptions.getClientID(), googleDriveOptions.getClientSecret()).build();
+				
+				if (StringUtils.isEmpty(clientTokenAsJson))
+				{
+					final String url = flow.newAuthorizationUrl().setRedirectUri(REDIRECT_URL).build();
+					System.out.println("Please open the following URL in your browser, copy the authorization code and enter below.");
+					System.out.println("\n" + url + "\n");
+					final String code = new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
+					
+					clientToken = flow.newTokenRequest(code).setRedirectUri(REDIRECT_URL).execute();
+					
+					storeClientToken(jsonFactory);
+					LOGGER.log(Level.INFO, "client token stored in '" + this.clientTokenPath + "'");
+				}
+				else
+				{
+					clientToken = jsonFactory.createJsonParser(clientTokenAsJson).parse(GoogleTokenResponse.class);
+				}
+				credential.setFromTokenResponse(clientToken);
 			}
-			credential.setFromTokenResponse(clientToken);
-		}
-		catch (final IOException e)
-		{
-			throw new CloudsyncException("Can't init remote google drive connector", e);
+			catch (final IOException e)
+			{
+				throw new CloudsyncException("Can't init remote google drive connector", e);
+			}
 		}
 	}
 
@@ -857,8 +876,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		final HttpTransport httpTransport = new NetHttpTransport();
 		final JsonFactory jsonFactory = new JacksonFactory();
-		service = new Drive.Builder(httpTransport, jsonFactory, credential).setApplicationName("Backup").build();
-		credential.setExpiresInSeconds(MIN_TOKEN_REFRESH_TIMEOUT);
+		service = new Drive.Builder(httpTransport, jsonFactory, null)
+			.setApplicationName("Backup")
+			.setHttpRequestInitializer(credential)
+			.build();
+		if (StringUtils.isEmpty(credential.getServiceAccountId())) {
+			credential.setExpiresInSeconds(MIN_TOKEN_REFRESH_TIMEOUT);
+		}
 		try
 		{
 			refreshCredential();
@@ -872,6 +896,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private void refreshCredential() throws IOException
 	{
+		if (StringUtils.isNotEmpty(credential.getServiceAccountId())) return;
+		
 		if (credential.getExpiresInSeconds() > MIN_TOKEN_REFRESH_TIMEOUT) return;
 
 		if (credential.refreshToken())
