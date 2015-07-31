@@ -110,6 +110,7 @@ usage: cloudsync <options>
                                            <try> - ignores invalid and not assignable permissions and ownerships
     --nocache                              Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                           Ignore a existing pid file. Should only be used after a previous crashed job.
+    --noencryption                         Don't encrypt uploaded data
     --dry-run                              Perform a trial run of --backup or --restore with no changes made.
     --progress                             Show progress during transfer and encryption.
     --retries <number>                     Number of network operation retries before an error is thrown (default: 6).
