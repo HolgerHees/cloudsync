@@ -28,7 +28,10 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+
+import com.dropbox.core.util.IOUtil;
 
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
@@ -39,7 +42,8 @@ import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
 import cloudsync.model.PermissionType;
 import cloudsync.model.RemoteItem;
-import cloudsync.model.StreamData;
+import cloudsync.model.LocalStreamData;
+import cloudsync.model.RemoteStreamData;
 import cloudsync.model.SyncType;
 
 public class Handler
@@ -622,44 +626,56 @@ public class Handler
 		return root;
 	}
 
-	public StreamData getLocalEncryptedBinary(final Item item) throws NoSuchFileException, CloudsyncException
+	public LocalStreamData getLocalProcessedBinary(final Item item) throws NoSuchFileException, CloudsyncException
 	{
-		StreamData data = localConnection.getFileBinary(item);
+		LocalStreamData data = localConnection.getFileBinary(item);
 
-		if (data != null) data = crypt.encryptedBinary(item.getName(), data, item);
+		if (data != null && crypt != null ) data = crypt.encryptedBinary(item.getName(), data, item);
 
 		return data;
 	}
 
-	public String getLocalEncryptMetadata(final Item item) throws CloudsyncException
+	public String getLocalProcessedMetadata(final Item item) throws CloudsyncException
 	{
 		String metadata = item.getMetadata(this);
-		return crypt.encryptText(metadata);
+		return crypt != null ? crypt.encryptText(metadata) : metadata;
 	}
 
-	public String getLocalEncryptedTitle(final Item item) throws CloudsyncException
+	public String getLocalProcessedTitle(final Item item) throws CloudsyncException
 	{
-		return crypt.encryptText(item.getName());
+		return crypt != null ? crypt.encryptText(item.getName()) : item.getName();
 	}
 
-	public String getDecryptedText(final String text) throws CloudsyncException
-	{
-		return crypt.decryptText(text);
-	}
-
-	public RemoteItem getRemoteItem(String remoteIdentifier, boolean isFolder, String title, String metadata, Long remoteFilesize, FileTime remoteCreationtime)
+	public RemoteItem initRemoteItem(String remoteIdentifier, boolean isFolder, String title, String metadata, Long remoteFilesize, FileTime remoteCreationtime)
 			throws CloudsyncException
 	{
 		return Item.fromMetadata(remoteIdentifier, isFolder, title, metadata, remoteFilesize, remoteCreationtime);
 	}
 
-	public InputStream getRemoteBinary(final Item item) throws IOException, CloudsyncException
+	public RemoteStreamData getRemoteProcessedBinary(Item item) throws IOException, CloudsyncException
 	{
-		return remoteConnection.get(this, item);
+		InputStream stream = remoteConnection.get(this, item);
+		
+		if( crypt != null )
+		{
+			try
+			{
+				return new RemoteStreamData(stream,crypt.decryptData(stream));
+			}
+			catch(Exception e)
+			{
+				if( stream != null ) IOUtils.closeQuietly(stream);
+				throw e;
+			}
+		}
+		else
+		{
+			return new RemoteStreamData(null,stream);
+		}
 	}
 
-	public InputStream getRemoteDecryptedBinary(InputStream stream) throws IOException, CloudsyncException
+	public String getProcessedText(final String text) throws CloudsyncException
 	{
-		return crypt.decryptData(stream);
+		return crypt != null ? crypt.decryptText(text) : text;
 	}
 }

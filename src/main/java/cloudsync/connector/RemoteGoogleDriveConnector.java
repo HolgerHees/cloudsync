@@ -35,7 +35,7 @@ import cloudsync.helper.Helper;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
-import cloudsync.model.StreamData;
+import cloudsync.model.LocalStreamData;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
@@ -194,7 +194,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	{
 		initService(handler);
 
-		String title = handler.getLocalEncryptedTitle(item);
+		String title = handler.getLocalProcessedTitle(item);
 		File parentDriveItem = null;
 		File driveItem;
 		int retryCount = 0;
@@ -209,7 +209,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				driveItem = new File();
 				driveItem.setTitle(title);
 				driveItem.setParents(Arrays.asList(parentReference));
-				final StreamData data = _prepareDriveItem(driveItem, item, handler, true);
+				final LocalStreamData data = _prepareDriveItem(driveItem, item, handler, true);
 				if (data == null)
 				{
 					driveItem = service.files().insert(driveItem).execute();
@@ -293,7 +293,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 					}
 				}
 				File driveItem = new File();
-				final StreamData data = _prepareDriveItem(driveItem, item, handler, with_filedata);
+				final LocalStreamData data = _prepareDriveItem(driveItem, item, handler, with_filedata);
 				if (data == null)
 				{
 					driveItem = service.files().update(item.getRemoteIdentifier(), driveItem).execute();
@@ -500,18 +500,18 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		return child_items;
 	}
 
-	private StreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException,
+	private LocalStreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException,
 			NoSuchFileException
 	{
-		StreamData data = null;
+		LocalStreamData data = null;
 		if (with_filedata)
 		{
 			// "getLocalEncryptedBinary" should be called before "getMetadata"
 			// to generate the needed checksum
-			data = handler.getLocalEncryptedBinary(item);
+			data = handler.getLocalProcessedBinary(item);
 		}
 
-		final String metadata = handler.getLocalEncryptMetadata(item);
+		final String metadata = handler.getLocalProcessedMetadata(item);
 
 		final List<Property> properties = new ArrayList<Property>();
 
@@ -579,14 +579,14 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		try
 		{
-			String title = handler.getDecryptedText(driveItem.getTitle());
+			String title = handler.getProcessedText(driveItem.getTitle());
 			String metadata = null;
 
 			try
 			{
 				if (parts.size() > 0)
 				{
-					metadata = handler.getDecryptedText(StringUtils.join(parts.toArray()));
+					metadata = handler.getProcessedText(StringUtils.join(parts.toArray()));
 				}
 				else
 				{
@@ -600,7 +600,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				LOGGER.log(Level.WARNING, "Can't decrypt metadata of " + type.getName() + " '" + parentItem.getPath() + "/" + title + "'");
 			}
 
-			return handler.getRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), title, metadata, driveItem.getFileSize(),
+			return handler.initRemoteItem(driveItem.getId(), driveItem.getMimeType().equals(FOLDER), title, metadata, driveItem.getFileSize(),
 					FileTime.fromMillis(driveItem.getCreatedDate().getValue()));
 		}
 		catch (CloudsyncException e)

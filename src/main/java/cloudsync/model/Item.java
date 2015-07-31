@@ -114,7 +114,7 @@ public class Item
 				try
 				{
 					// force a checksum update
-					handler.getLocalEncryptedBinary(this);
+					handler.getLocalProcessedBinary(this);
 				}
 				catch (NoSuchFileException e)
 				{

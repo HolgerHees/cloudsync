@@ -115,7 +115,7 @@ public class Cloudsync
 				LOGGER.log(Level.FINEST, "use exclude pattern: " + "[^" + StringUtils.join(excludePatterns, "$] | [$") + "$]");
 			}
 
-			handler = new Handler(name, localConnection, remoteConnector, new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(),
+			handler = new Handler(name, localConnection, remoteConnector, options.getNoEncryption() ? null : new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(),
 					options.getPermissionType());
 			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 

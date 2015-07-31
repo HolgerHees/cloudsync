@@ -40,7 +40,7 @@ import org.bouncycastle.util.io.Streams;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.model.Item;
-import cloudsync.model.StreamData;
+import cloudsync.model.LocalStreamData;
 import cloudsync.model.TempInputStream;
 
 public class Crypt
@@ -139,7 +139,7 @@ public class Crypt
 		}
 	}
 
-	public StreamData encryptedBinary(final String name, final StreamData data, final Item item) throws CloudsyncException
+	public LocalStreamData encryptedBinary(final String name, final LocalStreamData data, final Item item) throws CloudsyncException
 	{
 		InputStream input = null;
 
@@ -155,7 +155,7 @@ public class Crypt
 
 				final byte[] bytes = output.toByteArray();
 
-				return new StreamData(new ByteArrayInputStream(bytes), bytes.length);
+				return new LocalStreamData(new ByteArrayInputStream(bytes), bytes.length);
 			}
 			else
 			{
@@ -166,7 +166,7 @@ public class Crypt
 					final FileOutputStream output = new FileOutputStream(temp);
 					_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 
-					return new StreamData(new TempInputStream(temp), temp.length());
+					return new LocalStreamData(new TempInputStream(temp), temp.length());
 
 				}
 				catch (IOException e)

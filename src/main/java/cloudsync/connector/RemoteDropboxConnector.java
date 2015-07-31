@@ -33,7 +33,7 @@ import cloudsync.helper.Helper;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
-import cloudsync.model.StreamData;
+import cloudsync.model.LocalStreamData;
 
 import com.dropbox.core.DbxAppInfo;
 import com.dropbox.core.DbxAuthFinish;
@@ -143,7 +143,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 			{
 				Item parentItem = item.getParent();
 				String parentPath = buildPath(parentItem);
-				String path = parentPath + SEPARATOR + handler.getLocalEncryptedTitle(item);
+				String path = parentPath + SEPARATOR + handler.getLocalProcessedTitle(item);
 				DbxEntry entry;
 
 				if (item.isType(ItemType.FOLDER))
@@ -152,12 +152,12 @@ public class RemoteDropboxConnector implements RemoteConnector
 				}
 				else
 				{
-					StreamData data = handler.getLocalEncryptedBinary(item);
-					if (data == null) data = new StreamData(new ByteArrayInputStream("".getBytes()), 0);
+					LocalStreamData data = handler.getLocalProcessedBinary(item);
+					if (data == null) data = new LocalStreamData(new ByteArrayInputStream("".getBytes()), 0);
 					entry = client.uploadFile(path, DbxWriteMode.add(), data.getLength(), data.getStream());
 				}
 
-				String metadata = handler.getLocalEncryptMetadata(item);
+				String metadata = handler.getLocalProcessedMetadata(item);
 
 				client.uploadFile(path + METADATA_SUFFIX, DbxWriteMode.add(), metadata.length(), new ByteArrayInputStream(metadata.getBytes("ASCII")));
 				_addToCache(entry);
@@ -191,13 +191,13 @@ public class RemoteDropboxConnector implements RemoteConnector
 				String path = buildPath(item);
 				if (with_filedata)
 				{
-					StreamData data = handler.getLocalEncryptedBinary(item);
+					LocalStreamData data = handler.getLocalProcessedBinary(item);
 					if (data != null)
 					{
 						client.uploadFile(path, DbxWriteMode.force(), data.getLength(), data.getStream());
 					}
 				}
-				String metadata = handler.getLocalEncryptMetadata(item);
+				String metadata = handler.getLocalProcessedMetadata(item);
 				client.uploadFile(path + METADATA_SUFFIX, DbxWriteMode.force(), metadata.length(), new ByteArrayInputStream(metadata.getBytes("ASCII")));
 				return;
 			}
@@ -406,10 +406,10 @@ public class RemoteDropboxConnector implements RemoteConnector
 			time = 0l;
 		}
 
-		String title = handler.getDecryptedText(childData[0].name);
-		String metadata = handler.getDecryptedText(encryptedMetadata);
+		String title = handler.getProcessedText(childData[0].name);
+		String metadata = handler.getProcessedText(encryptedMetadata);
 
-		return handler.getRemoteItem(childData[0].name, childData[0].isFolder(), title, metadata, size, FileTime.fromMillis(time));
+		return handler.initRemoteItem(childData[0].name, childData[0].isFolder(), title, metadata, size, FileTime.fromMillis(time));
 	}
 
 	private void _removeFromCache(final String path)

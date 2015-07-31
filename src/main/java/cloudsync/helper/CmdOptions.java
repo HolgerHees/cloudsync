@@ -51,6 +51,7 @@ public class CmdOptions
 	private boolean					dryrun;
 	private boolean					showProgress;
 	private boolean					askToContinue;
+	private boolean					noencryption;
 	private LinkType				followlinks;
 	private ExistingBehaviorType	existingBehavior;
 	private String					remoteConnector;
@@ -184,6 +185,12 @@ public class CmdOptions
 
 		OptionBuilder.withDescription("Ignore a existing pid file. Should only be used after a previous crashed job.");
 		OptionBuilder.withLongOpt("forcestart");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		OptionBuilder.withDescription("Don't encrypt uploaded data");
+		OptionBuilder.withLongOpt("noencryption");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -330,6 +337,7 @@ public class CmdOptions
 		dryrun = cmd.hasOption("dry-run");
 		showProgress = cmd.hasOption("progress");
 		askToContinue = cmd.hasOption("ask-to-continue");
+		noencryption = cmd.hasOption("noencryption");
 
 		String pattern = getOptionValue(cmd, "include", null);
 		if (pattern != null) includePatterns = pattern.contains("|") ? pattern.split("\\|") : new String[] { pattern };
@@ -495,6 +503,11 @@ public class CmdOptions
 	public boolean getNoCache()
 	{
 		return nocache;
+	}
+
+	public boolean getNoEncryption()
+	{
+		return noencryption;
 	}
 
 	public boolean getForceStart()

@@ -54,7 +54,8 @@ import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.LinkType;
 import cloudsync.model.PermissionType;
-import cloudsync.model.StreamData;
+import cloudsync.model.LocalStreamData;
+import cloudsync.model.RemoteStreamData;
 
 public class LocalFilesystemConnector
 {
@@ -215,18 +216,13 @@ public class LocalFilesystemConnector
 
 			if (item.isType(ItemType.LINK))
 			{
-				InputStream remoteStream = null;
-				InputStream remoteDecryptedStream = null;
+				RemoteStreamData remoteStreamData = null;
 
 				try
 				{
-					remoteStream = handler.getRemoteBinary(item);
-					remoteDecryptedStream = handler.getRemoteDecryptedBinary(remoteStream);
-					// if (!createChecksum(data).equals(item.getChecksum())) {
-					// throw new
-					// CloudsyncException("restored filechecksum differs from the original filechecksum");
-					// }
-					final String link = IOUtils.toString(remoteDecryptedStream);
+					remoteStreamData = handler.getRemoteProcessedBinary(item);
+
+					final String link = IOUtils.toString( remoteStreamData.getDecryptedStream() );
 					Files.createSymbolicLink(path, Paths.get(link));
 
 				}
@@ -237,21 +233,18 @@ public class LocalFilesystemConnector
 				}
 				finally
 				{
-					if (remoteStream != null) IOUtils.closeQuietly(remoteStream);
-					if (remoteDecryptedStream != null) IOUtils.closeQuietly(remoteDecryptedStream);
+					if (remoteStreamData != null) remoteStreamData.close();
 				}
 			}
 			else if (item.isType(ItemType.FILE))
 			{
-				InputStream remoteStream = null;
-				InputStream remoteDecryptedStream = null;
+				RemoteStreamData remoteStreamData = null;
 				OutputStream outputStream = null;
 				InputStream localChecksumStream = null;
 
 				try
 				{
-					remoteStream = handler.getRemoteBinary(item);
-					remoteDecryptedStream = handler.getRemoteDecryptedBinary(remoteStream);
+					remoteStreamData = handler.getRemoteProcessedBinary(item);
 					outputStream = Files.newOutputStream(path);
 
 					final long length = item.getFilesize();
@@ -268,7 +261,7 @@ public class LocalFilesystemConnector
 						double lastBytes = 0;
 						String currentSpeed = "";
 
-						while ((len = remoteDecryptedStream.read(buffer)) != -1)
+						while ((len = remoteStreamData.getDecryptedStream().read(buffer)) != -1)
 						{
 							outputStream.write(buffer, 0, len);
 							current += len;
@@ -293,7 +286,7 @@ public class LocalFilesystemConnector
 					}
 					else
 					{
-						while ((len = remoteDecryptedStream.read(buffer)) != -1)
+						while ((len = remoteStreamData.getDecryptedStream().read(buffer)) != -1)
 						{
 							outputStream.write(buffer, 0, len);
 						}
@@ -318,8 +311,7 @@ public class LocalFilesystemConnector
 				}
 				finally
 				{
-					if (remoteStream != null) IOUtils.closeQuietly(remoteStream);
-					if (remoteDecryptedStream != null) IOUtils.closeQuietly(remoteDecryptedStream);
+					if (remoteStreamData != null) remoteStreamData.close();
 					if (outputStream != null) IOUtils.closeQuietly(outputStream);
 					if (localChecksumStream != null) IOUtils.closeQuietly(localChecksumStream);
 				}
@@ -732,7 +724,7 @@ public class LocalFilesystemConnector
 		return DigestUtils.md5Hex(data);
 	}
 
-	public StreamData getFileBinary(final Item item) throws CloudsyncException
+	public LocalStreamData getFileBinary(final Item item) throws CloudsyncException
 	{
 		File file = new File(localPath + Item.SEPARATOR + item.getPath());
 
@@ -746,7 +738,7 @@ public class LocalFilesystemConnector
 				checksumInputStream = new ByteArrayInputStream(data);
 				item.setChecksum(createChecksum(checksumInputStream));
 
-				return new StreamData(new ByteArrayInputStream(data), data.length);
+				return new LocalStreamData(new ByteArrayInputStream(data), data.length);
 
 			}
 			else if (item.isType(ItemType.FILE))
@@ -754,7 +746,7 @@ public class LocalFilesystemConnector
 				checksumInputStream = Files.newInputStream(file.toPath());
 				item.setChecksum(createChecksum(checksumInputStream));
 
-				return new StreamData(Files.newInputStream(file.toPath()), Files.size(file.toPath()));
+				return new LocalStreamData(Files.newInputStream(file.toPath()), Files.size(file.toPath()));
 			}
 			return null;
 

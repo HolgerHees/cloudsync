@@ -2,12 +2,12 @@ package cloudsync.model;
 
 import java.io.InputStream;
 
-public class StreamData
+public class LocalStreamData
 {
 	private InputStream	data;
 	private long		length;
 
-	public StreamData(InputStream data, long length)
+	public LocalStreamData(InputStream data, long length)
 	{
 		this.data = data;
 		this.length = length;
