@@ -244,13 +244,13 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 						driveItem = _searchDriveItem(item.getParent(), title);
 						if (driveItem != null)
 						{
-							LOGGER.log(Level.WARNING, getExceptionMessage(e) + "found uploaded item - try to update");
+							LOGGER.log(Level.WARNING, "Google Drive IOException: " + getExceptionMessage(e) + " - found partially uploaded item - try to update");
 
 							item.setRemoteIdentifier(driveItem.getId());
 							update(handler, item, true);
 							return;
 						}
-						LOGGER.log(Level.WARNING, getExceptionMessage(e) + "item not uploaded - retry " + (i + 1) + "/" + MIN_SEARCH_RETRIES + " - wait "
+						LOGGER.log(Level.WARNING, "Google Drive IOException: " + getExceptionMessage(e) + " - item not uploaded - retry " + (i + 1) + "/" + MIN_SEARCH_RETRIES + " - wait "
 								+ MIN_SEARCH_BREAK + " ms");
 						sleep(MIN_SEARCH_BREAK);
 					}
@@ -821,7 +821,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 			count++;
 
-			LOGGER.log(Level.WARNING, "ioexception: " + getExceptionMessage(e) + " - " + name + " - retry " + count + "/" + retries);
+			LOGGER.log(Level.WARNING, "Google Drive IOException: " + getExceptionMessage(e) + " - " + name + " - retry " + count + "/" + retries);
 
 			return count;
 		}
