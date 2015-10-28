@@ -57,11 +57,13 @@ public class Crypt
 
 	private final String		passphrase;
 	private boolean				showProgress;
+	private long				minTmpFileSize;
 
 	public Crypt(final CmdOptions options) throws CloudsyncException
 	{
 		passphrase = options.getPassphrase();
 		showProgress = options.showProgress();
+		minTmpFileSize = options.getMinTmpFileSise();
 
 		int allowedKeyLength = 0;
 		try
@@ -147,8 +149,7 @@ public class Crypt
 		{
 			input = data.getStream();
 
-			// 128MB
-			if (data.getLength() < 134217728)
+			if (data.getLength() < minTmpFileSize)
 			{
 				final ByteArrayOutputStream output = new ByteArrayOutputStream();
 				_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);

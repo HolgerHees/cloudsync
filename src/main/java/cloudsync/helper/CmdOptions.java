@@ -59,6 +59,8 @@ public class CmdOptions
 	private int						retries;
 	private int						waitretry;
 
+	private long 					minTmpFileSize;
+
 	public CmdOptions(final String[] args)
 	{
 		this.args = args;
@@ -332,6 +334,16 @@ public class CmdOptions
 			waitretry = 0;
 		}
 
+		try
+		{
+			minTmpFileSize = Long.parseLong( getOptionValue(cmd, "min_tmp_file_size", "134217728" ) );
+		}
+		catch (NumberFormatException e)
+		{
+			// 128MB
+			minTmpFileSize = 134217728;
+		}
+
 		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
 		dryrun = cmd.hasOption("dry-run");
@@ -538,6 +550,11 @@ public class CmdOptions
 	public int getWaitRetry()
 	{
 		return waitretry;
+	}
+
+	public long getMinTmpFileSise()
+	{
+		return minTmpFileSize;
 	}
 
 	public LinkType getFollowLinks()

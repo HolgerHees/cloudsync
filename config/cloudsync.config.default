@@ -47,3 +47,7 @@ EXCLUDE=.*\\.git/.*|.*\\.svn/.*
 
 # Maximum number of stored histories
 ;HISTORY=0
+
+# create tmp file for encryption of files larger than (128MB)
+# set a smaller value for low memory systems
+;MIN_TMP_FILE_SIZE=134217728
