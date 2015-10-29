@@ -273,7 +273,8 @@ public class Handler
 				if (!StringUtils.isEmpty(msg)) LOGGER.log(Level.WARNING, "  size: " + msg);
 				LOGGER.log(Level.WARNING, "  created: " + childItem.getRemoteCreationTime() + " [" + existingChildItem.getRemoteCreationTime() + "]");
 
-				if (existingChildItem.getRemoteCreationTime().toMillis() > childItem.getRemoteCreationTime().toMillis())
+				// if childItem is newer
+				if (existingChildItem.getRemoteCreationTime().compareTo( childItem.getRemoteCreationTime() ) < 0 )
 				{
 					parentItem.addChild(childItem);
 					duplicates.add(existingChildItem);
