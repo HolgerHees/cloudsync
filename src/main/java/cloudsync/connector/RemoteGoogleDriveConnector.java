@@ -808,10 +808,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			if (item != null)
 			{
 				info.append( " of " );
-				info.append( item.getTypeName() );
-				info.append( " '" );
-				info.append( item.getPath() );
-				info.append( "'");
+				info.append( item.getInfo() );
 			}
 			info.append(". Remote item not found.\ntry to run with --nocache");
 

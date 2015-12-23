@@ -153,7 +153,7 @@ public class Crypt
 			if (data.getLength() < minTmpFileSize)
 			{
 				final ByteArrayOutputStream output = new ByteArrayOutputStream();
-				_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+				_encryptData(output, input, data.getLength(), name, item.getInfo(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 
 				final byte[] bytes = output.toByteArray();
 
@@ -166,7 +166,7 @@ public class Crypt
 					File temp = File.createTempFile("encrypted", ".pgp");
 					temp.deleteOnExit();
 					final FileOutputStream output = new FileOutputStream(temp);
-					_encryptData(output, input, data.getLength(), name, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+					_encryptData(output, input, data.getLength(), name, item.getInfo(), ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 
 					return new LocalStreamData(new TempInputStream(temp), temp.length());
 
@@ -188,14 +188,14 @@ public class Crypt
 	{
 		final ByteArrayOutputStream output = new ByteArrayOutputStream();
 		final byte[] bytes = text.getBytes();
-		_encryptData(output, new ByteArrayInputStream(bytes), bytes.length, PGPLiteralData.CONSOLE, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
+		_encryptData(output, new ByteArrayInputStream(bytes), bytes.length, PGPLiteralData.CONSOLE, null, ENCRYPT_ALGORITHM, ENCRYPT_ARMOR);
 
 		text = Base64.encodeBase64String(output.toByteArray());
 		text = text.replace('/', '_');
 		return text;
 	}
 
-	private void _encryptData(final OutputStream output, final InputStream input, final long length, final String name, final int algorithm, final boolean armor)
+	private void _encryptData(final OutputStream output, final InputStream input, final long length, final String name, final String fileOutputInfo, final int algorithm, final boolean armor)
 			throws FileIOException
 	{
 		OutputStream out = output;
@@ -218,7 +218,7 @@ public class Crypt
 			byte[] buffer = new byte[BUFFER_SIZE];
 			int len = 0;
 
-			if (showProgress && output instanceof FileOutputStream)
+			if (showProgress && output instanceof FileOutputStream && fileOutputInfo != null )
 			{
 				double current = 0;
 				DecimalFormat df = new DecimalFormat("00");
@@ -228,7 +228,7 @@ public class Crypt
 					literalOut.write(buffer, 0, len);
 					current += len;
 					String msg = "\r  " + df.format(Math.ceil(current * 100 / length)) + "% (" + convertToKB(current) + " of " + convertToKB(length)
-							+ " kb) encrypted";
+							+ " kb) encrypted of " + fileOutputInfo;;
 					LOGGER.log(Level.FINEST, msg, true);
 				}
 			}

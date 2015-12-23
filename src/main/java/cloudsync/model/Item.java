@@ -424,4 +424,14 @@ public class Item
 
 		return FileTime.from(accesstime.longValue(), TimeUnit.SECONDS);
 	}
+
+	public String getInfo()
+	{
+		StringBuffer info = new StringBuffer();
+		info.append( getTypeName() );
+		info.append( " '" );
+		info.append( getPath() );
+		info.append( "'" );
+		return info.toString();
+	}
 }

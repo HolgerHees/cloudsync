@@ -592,6 +592,7 @@ public class Handler
 			}
 			catch (FileIOException e)
 			{
+				status.skip++;
 				if( logAndContinue )
 				{
 					LOGGER.log(Level.SEVERE, "Skip '" + backupPath + "'. " + e.getMessage());
