@@ -51,6 +51,7 @@ public class CmdOptions
 	private boolean					dryrun;
 	private boolean					showProgress;
 	private boolean					askToContinue;
+	private boolean					logAndContinue;
 	private boolean					noencryption;
 	private LinkType				followlinks;
 	private ExistingBehaviorType	existingBehavior;
@@ -225,8 +226,24 @@ public class CmdOptions
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Show a command prompt (Y/n) instead of throwing an error on network connection problems.");
-		OptionBuilder.withLongOpt("ask-to-continue");
+		description = "How to continue on network problems\n";
+		description += "<exception> - Throw an exception - (default)\n";
+		description += "<ask> - Show a command prompt (Y/n) to continue\n";
+		OptionBuilder.withArgName("exception|ask");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription(description);
+		OptionBuilder.withLongOpt("network-error");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
+		description = "How to continue on blocked files or permission problems\n";
+		description += "<exception> - Throw an exception - (default)\n";
+		description += "<message> - Show a error log message\n";
+		OptionBuilder.withArgName("exception|message");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription(description);
+		OptionBuilder.withLongOpt("file-error");
 		option = OptionBuilder.create();
 		options.addOption(option);
 		positions.add(option);
@@ -344,11 +361,16 @@ public class CmdOptions
 			minTmpFileSize = 134217728;
 		}
 
+		value = getOptionValue(cmd, "network-error", "exception");
+		askToContinue = value.equals("ask");
+
+		value = getOptionValue(cmd, "file-error", "exception");
+		logAndContinue = value.equals("message");
+
 		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
 		dryrun = cmd.hasOption("dry-run");
 		showProgress = cmd.hasOption("progress");
-		askToContinue = cmd.hasOption("ask-to-continue");
 		noencryption = cmd.hasOption("noencryption");
 
 		String pattern = getOptionValue(cmd, "include", null);
@@ -540,6 +562,11 @@ public class CmdOptions
 	public boolean askToContinue()
 	{
 		return askToContinue;
+	}
+
+	public boolean logAndContinue()
+	{
+		return logAndContinue;
 	}
 
 	public int getRetries()

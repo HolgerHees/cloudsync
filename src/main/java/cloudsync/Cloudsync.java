@@ -116,7 +116,7 @@ public class Cloudsync
 			}
 
 			handler = new Handler(name, localConnection, remoteConnector, options.getNoEncryption() ? null : new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(),
-					options.getPermissionType());
+					options.getPermissionType(),options.logAndContinue());
 			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch ( type )

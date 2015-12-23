@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 
 import javax.crypto.Cipher;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
@@ -141,7 +142,7 @@ public class Crypt
 		}
 	}
 
-	public LocalStreamData encryptedBinary(final String name, final LocalStreamData data, final Item item) throws CloudsyncException
+	public LocalStreamData encryptedBinary(final String name, final LocalStreamData data, final Item item) throws FileIOException
 	{
 		InputStream input = null;
 
@@ -172,7 +173,7 @@ public class Crypt
 				}
 				catch (IOException e)
 				{
-					throw new CloudsyncException("can't encrypt data", e);
+					throw new FileIOException("can't encrypt data", e);
 				}
 			}
 
@@ -183,7 +184,7 @@ public class Crypt
 		}
 	}
 
-	public String encryptText(String text) throws CloudsyncException
+	public String encryptText(String text) throws FileIOException
 	{
 		final ByteArrayOutputStream output = new ByteArrayOutputStream();
 		final byte[] bytes = text.getBytes();
@@ -195,7 +196,7 @@ public class Crypt
 	}
 
 	private void _encryptData(final OutputStream output, final InputStream input, final long length, final String name, final int algorithm, final boolean armor)
-			throws CloudsyncException
+			throws FileIOException
 	{
 		OutputStream out = output;
 
@@ -251,7 +252,7 @@ public class Crypt
 		}
 		catch (Exception e)
 		{
-			throw new CloudsyncException("can't encrypt data", e);
+			throw new FileIOException("can't encrypt data", e);
 		}
 		finally
 		{
@@ -263,7 +264,7 @@ public class Crypt
 				}
 				catch (IOException e)
 				{
-					throw new CloudsyncException("can't encrypt data", e);
+					throw new FileIOException("can't encrypt data", e);
 				}
 			}
 		}

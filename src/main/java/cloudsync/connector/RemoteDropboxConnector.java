@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -44,6 +45,8 @@ import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.DbxWebAuthNoRedirect;
 import com.dropbox.core.DbxWriteMode;
+
+import javax.annotation.processing.FilerException;
 
 public class RemoteDropboxConnector implements RemoteConnector
 {
@@ -132,7 +135,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 	}
 
 	@Override
-	public void upload(final Handler handler, final Item item) throws CloudsyncException, NoSuchFileException
+	public void upload(final Handler handler, final Item item) throws CloudsyncException, FileIOException
 	{
 		initService(handler);
 
@@ -179,7 +182,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 	}
 
 	@Override
-	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException
+	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, FileIOException
 	{
 		initService(handler);
 

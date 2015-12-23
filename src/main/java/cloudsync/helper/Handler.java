@@ -24,14 +24,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-
-import com.dropbox.core.util.IOUtil;
 
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
@@ -69,6 +68,8 @@ public class Handler
 
 	private boolean							isLocked	= false;
 
+	private boolean 						logAndContinue;
+
 	class Status
 	{
 		private int	create	= 0;
@@ -78,7 +79,7 @@ public class Handler
 	}
 
 	public Handler(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt,
-			final ExistingBehaviorType existingFlag, final LinkType followlinks, final PermissionType permissionType)
+			final ExistingBehaviorType existingFlag, final LinkType followlinks, final PermissionType permissionType, final boolean logAndContinue )
 	{
 		this.name = name;
 		this.localConnection = localConnection;
@@ -87,6 +88,8 @@ public class Handler
 		this.existingFlag = existingFlag;
 		this.followlinks = followlinks;
 		this.permissionType = permissionType;
+
+		this.logAndContinue = logAndContinue;
 
 		root = Item.getDummyRoot();
 		duplicates = new ArrayList<Item>();
@@ -499,6 +502,7 @@ public class Handler
 			if (!checkPattern(filePath, includePatterns, excludePatterns)) continue;
 
 			String backupPath = filePath;
+			Item remoteChildItem = null;
 			try
 			{
 				Item localChildItem = localConnection.getItem(localChildFile, followlinks);
@@ -506,7 +510,7 @@ public class Handler
 
 				backupPath = localChildItem.getPath();
 
-				Item remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
+				remoteChildItem = remoteParentItem.getChildByName(localChildItem.getName());
 
 				if (remoteChildItem == null)
 				{
@@ -586,6 +590,20 @@ public class Handler
 					backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
 				}
 			}
+			catch (FileIOException e)
+			{
+				if( logAndContinue )
+				{
+					LOGGER.log(Level.WARNING, "Skip '" + backupPath + "'. " + e.getMessage());
+					if( remoteChildItem != null ) {
+						unusedRemoteChildItems.remove(remoteChildItem.getName());
+					}
+				}
+				else
+				{
+					throw new CloudsyncException("Skip '" + backupPath + "'", e);
+				}
+			}
 			catch (NoSuchFileException e)
 			{
 				LOGGER.log(Level.WARNING, "skip '" + backupPath + "'. does not exists anymore.");
@@ -627,7 +645,7 @@ public class Handler
 		return root;
 	}
 
-	public LocalStreamData getLocalProcessedBinary(final Item item) throws NoSuchFileException, CloudsyncException
+	public LocalStreamData getLocalProcessedBinary(final Item item) throws FileIOException
 	{
 		LocalStreamData data = localConnection.getFileBinary(item);
 
@@ -636,13 +654,13 @@ public class Handler
 		return data;
 	}
 
-	public String getLocalProcessedMetadata(final Item item) throws CloudsyncException
+	public String getLocalProcessedMetadata(final Item item) throws FileIOException
 	{
 		String metadata = item.getMetadata(this);
 		return crypt != null ? crypt.encryptText(metadata) : metadata;
 	}
 
-	public String getLocalProcessedTitle(final Item item) throws CloudsyncException
+	public String getLocalProcessedTitle(final Item item) throws FileIOException
 	{
 		return crypt != null ? crypt.encryptText(item.getName()) : item.getName();
 	}

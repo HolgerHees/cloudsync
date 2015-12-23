@@ -1,7 +1,6 @@
 package cloudsync.model;
 
 import java.io.File;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,12 +9,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.Handler;
 
 public class Item
@@ -105,20 +104,14 @@ public class Item
 		return item;
 	}
 
-	public String getMetadata(Handler handler) throws CloudsyncException
+	public String getMetadata(Handler handler) throws FileIOException
 	{
 		if (needsMetadataUpgrade)
 		{
 			if (checksum == null)
 			{
-				try
-				{
-					// force a checksum update
-					handler.getLocalProcessedBinary(this);
-				}
-				catch (NoSuchFileException e)
-				{
-				}
+				// force a checksum update
+				handler.getLocalProcessedBinary(this);
 			}
 		}
 

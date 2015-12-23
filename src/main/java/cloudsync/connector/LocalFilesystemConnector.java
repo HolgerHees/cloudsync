@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -479,7 +480,7 @@ public class LocalFilesystemConnector
 		return folder.listFiles();
 	}
 
-	public Item getItem(File file, final LinkType followlinks) throws CloudsyncException, NoSuchFileException
+	public Item getItem(File file, final LinkType followlinks) throws FileIOException, NoSuchFileException
 	{
 		try
 		{
@@ -611,14 +612,9 @@ public class LocalFilesystemConnector
 			return Item.fromLocalData(file.getName(), type, filesize, creationTime, modifyTime, accessTime, attributes);
 
 		}
-		catch (final NoSuchFileException e)
-		{
-			throw e;
-
-		}
 		catch (final IOException e)
 		{
-			throw new CloudsyncException("Can't read attributes of '" + file.getAbsolutePath() + "'", e);
+			throw new FileIOException("Can't read attributes of '" + file.getAbsolutePath() + "'", e);
 		}
 	}
 
@@ -724,7 +720,7 @@ public class LocalFilesystemConnector
 		return DigestUtils.md5Hex(data);
 	}
 
-	public LocalStreamData getFileBinary(final Item item) throws CloudsyncException
+	public LocalStreamData getFileBinary(final Item item) throws FileIOException
 	{
 		File file = new File(localPath + Item.SEPARATOR + item.getPath());
 
@@ -753,7 +749,7 @@ public class LocalFilesystemConnector
 		}
 		catch (final IOException e)
 		{
-			throw new CloudsyncException("Can't read data of '" + file.getAbsolutePath() + "'", e);
+			throw new FileIOException("Can't read data of '" + file.getAbsolutePath() + "'", e);
 
 		}
 		finally

@@ -7,7 +7,6 @@ import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
@@ -25,6 +24,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloudsync.exceptions.FileIOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -190,7 +190,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	}
 
 	@Override
-	public void upload(final Handler handler, final Item item) throws CloudsyncException, NoSuchFileException
+	public void upload(final Handler handler, final Item item) throws CloudsyncException, FileIOException
 	{
 		initService(handler);
 
@@ -231,10 +231,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				item.setRemoteIdentifier(driveItem.getId());
 				return;
 			}
-			catch (final NoSuchFileException e)
-			{
-				throw e;
-			}
 			catch (final IOException e)
 			{
 				if (parentDriveItem != null)
@@ -262,7 +258,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	}
 
 	@Override
-	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, NoSuchFileException
+	public void update(final Handler handler, final Item item, final boolean with_filedata) throws CloudsyncException, FileIOException
 	{
 		initService(handler);
 
@@ -317,10 +313,6 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				}
 				_addToCache(driveItem, null);
 				return;
-			}
-			catch (final NoSuchFileException e)
-			{
-				throw e;
 			}
 			catch (final IOException e)
 			{
@@ -501,7 +493,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	}
 
 	private LocalStreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException,
-			NoSuchFileException
+			FileIOException
 	{
 		LocalStreamData data = null;
 		if (with_filedata)

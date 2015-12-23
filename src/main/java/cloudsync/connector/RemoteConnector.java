@@ -1,10 +1,10 @@
 package cloudsync.connector;
 
 import java.io.InputStream;
-import java.nio.file.NoSuchFileException;
 import java.util.List;
 
 import cloudsync.exceptions.CloudsyncException;
+import cloudsync.exceptions.FileIOException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.model.Item;
@@ -16,9 +16,9 @@ public interface RemoteConnector
 
 	public List<RemoteItem> readFolder(Handler handler, Item parentItem) throws CloudsyncException;
 
-	public void upload(Handler handler, Item item) throws CloudsyncException, NoSuchFileException;
+	public void upload(Handler handler, Item item) throws CloudsyncException, FileIOException;
 
-	public void update(Handler handler, Item item, boolean with_filedata) throws CloudsyncException, NoSuchFileException;
+	public void update(Handler handler, Item item, boolean with_filedata) throws CloudsyncException, FileIOException;
 
 	public void remove(Handler handler, Item item) throws CloudsyncException;
 
