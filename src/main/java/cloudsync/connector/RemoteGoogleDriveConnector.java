@@ -25,6 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import cloudsync.exceptions.FileIOException;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -800,6 +801,27 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private int validateException(String name, Item item, IOException e, int count) throws CloudsyncException
 	{
+		if( e instanceof GoogleJsonResponseException)
+		{
+			StringBuffer info = new StringBuffer("Unexpected error during ");
+			info.append(name);
+			if (item != null)
+			{
+				info.append( " of " );
+				info.append( item.getTypeName() );
+				info.append( " '" );
+				info.append( item.getPath() );
+				info.append( "'");
+			}
+			info.append(". Remote item not found.\ntry to run with --nocache");
+
+			switch( ((GoogleJsonResponseException)e).getStatusCode() )
+			{
+				case 404:
+					throw new CloudsyncException( info.toString(), e);
+			}
+		}
+
 		if (count < retries)
 		{
 			long currentValidate = System.currentTimeMillis();
