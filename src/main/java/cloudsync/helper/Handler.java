@@ -594,7 +594,7 @@ public class Handler
 			{
 				if( logAndContinue )
 				{
-					LOGGER.log(Level.WARNING, "Skip '" + backupPath + "'. " + e.getMessage());
+					LOGGER.log(Level.SEVERE, "Skip '" + backupPath + "'. " + e.getMessage());
 					if( remoteChildItem != null ) {
 						unusedRemoteChildItems.remove(remoteChildItem.getName());
 					}
