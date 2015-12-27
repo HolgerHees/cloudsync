@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Properties;
 
+import cloudsync.exceptions.InfoException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -264,6 +265,12 @@ public class CmdOptions
 		options.addOption(option);
 		positions.add(option);
 
+		OptionBuilder.withDescription("Show version number");
+		OptionBuilder.withLongOpt("version");
+		option = OptionBuilder.create("v");
+		options.addOption(option);
+		positions.add(option);
+
 		OptionBuilder.withDescription("Show this help");
 		OptionBuilder.withLongOpt("help");
 		option = OptionBuilder.create("h");
@@ -271,7 +278,7 @@ public class CmdOptions
 		positions.add(option);
 	}
 
-	public void parse() throws UsageException, CloudsyncException
+	public void parse() throws UsageException, CloudsyncException, InfoException
 	{
 		final CommandLineParser parser = new GnuParser();
 		CommandLine cmd;
@@ -393,7 +400,11 @@ public class CmdOptions
 		boolean logfileValid = logfilePath == null || new File(logfilePath).getParentFile().isDirectory();
 		boolean cachefileValid = cachefilePath == null || new File(cachefilePath).getParentFile().isDirectory();
 
-		if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0
+		if( cmd.hasOption("version") )
+		{
+			throw new InfoException("cloudsync " + getClass().getPackage().getImplementationVersion());
+		}
+		else if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0
 				|| permissions == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid)
 		{
 			int possibleWrongOptions = cmd.getOptions().length;

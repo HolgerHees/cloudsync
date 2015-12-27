@@ -10,6 +10,7 @@ import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import cloudsync.exceptions.InfoException;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 
@@ -43,7 +44,7 @@ public class Cloudsync
 		logger.setUseParentHandlers(false);
 	}
 
-	private void start() throws CloudsyncException, UsageException
+	private void start() throws CloudsyncException, UsageException, InfoException
 	{
 		options.parse();
 
@@ -166,6 +167,13 @@ public class Cloudsync
 				LOGGER.log(Level.WARNING, e.getMessage() + "\n");
 			}
 			cloudsync.options.printHelp();
+		}
+		catch (InfoException e)
+		{
+			if (!StringUtils.isEmpty(e.getMessage()))
+			{
+				System.out.println("\n" + e.getMessage() + "\n");
+			}
 		}
 		catch (CloudsyncException e)
 		{

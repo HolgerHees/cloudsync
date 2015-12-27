@@ -82,6 +82,8 @@
 					<archive>
 						<manifest>
 							<mainClass>cloudsync.Cloudsync</mainClass>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+							<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
 						</manifest>
 					</archive>
 					<outputDirectory>${project.basedir}/lib</outputDirectory>
