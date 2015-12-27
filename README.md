@@ -110,14 +110,18 @@ usage: cloudsync <options>
                                            <try> - ignores invalid and not assignable permissions and ownerships
     --nocache                              Don't use 'cloudsync*.cache' file for --backup or --list (much slower)
     --forcestart                           Ignore a existing pid file. Should only be used after a previous crashed job.
-    --noencryption                         Don't encrypt uploaded data
-    --dry-run                              Perform a trial run of --backup or --restore with no changes made.
-    --progress                             Show progress during transfer and encryption.
+    --noencryption                         Don't encrypt uploaded data                                              
+    --dry-run                              Perform a trial run of --backup or --restore with no changes made.       
+    --progress                             Show progress during transfer and encryption.                            
     --retries <number>                     Number of network operation retries before an error is thrown (default: 6).
-    --waitretry <seconds>                  Number of seconds between 2 retries (default: 10).
-    --ask-to-continue                      Show a command prompt (Y/n) instead of throwing an error on network
-                                           connection problems.
-    --logfile <path>                       Log message to <path>
-    --cachefile <path>                     Cache data to <path>
- -h,--help
+    --waitretry <seconds>                  Number of seconds between 2 retries (default: 10).                       
+    --network-error <exception|ask>        How to continue on network problems                                      
+                                           <exception> - Throw an exception - (default)                             
+                                           <ask> - Show a command prompt (Y/n) to continue                          
+    --file-error <exception|message>       How to continue on blocked files or permission problems                  
+                                           <exception> - Throw an exception - (default)                             
+                                           <message> - Show a error log message                                     
+    --logfile <path>                       Log message to <path>                                                    
+    --cachefile <path>                     Cache data to <path>                                                                                                                  
+ -h,--help                                 Show this help
  ```
