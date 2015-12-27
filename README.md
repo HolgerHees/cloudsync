@@ -115,9 +115,14 @@ usage: cloudsync <options>
     --progress                             Show progress during transfer and encryption.
     --retries <number>                     Number of network operation retries before an error is thrown (default: 6).
     --waitretry <seconds>                  Number of seconds between 2 retries (default: 10).
-    --ask-to-continue                      Show a command prompt (Y/n) instead of throwing an error on network
-                                           connection problems.
+    --network-error <exception|ask>        How to continue on network problems
+                                           <exception> - Throw an exception - (default)
+                                           <ask> - Show a command prompt (Y/n) to continue
+    --file-error <exception|message>       How to continue on blocked files or permission problems
+                                           <exception> - Throw an exception - (default)
+                                           <message> - Show a error log message
     --logfile <path>                       Log message to <path>
     --cachefile <path>                     Cache data to <path>
- -h,--help
+ -v,--version                              Show version number
+ -h,--help                                 Show this help
  ```
