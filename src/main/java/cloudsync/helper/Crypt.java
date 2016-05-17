@@ -43,6 +43,12 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.model.Item;
 import cloudsync.model.LocalStreamData;
 import cloudsync.model.TempInputStream;
+import org.bouncycastle.openpgp.operator.PBEDataDecryptorFactory;
+import org.bouncycastle.openpgp.operator.PGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.bc.BcPBEDataDecryptorFactory;
+import org.bouncycastle.openpgp.operator.bc.BcPBEKeyEncryptionMethodGenerator;
+import org.bouncycastle.openpgp.operator.bc.BcPGPDataEncryptorBuilder;
+import org.bouncycastle.openpgp.operator.bc.BcPGPDigestCalculatorProvider;
 
 public class Crypt
 {
@@ -59,6 +65,7 @@ public class Crypt
 	private final String		passphrase;
 	private boolean				showProgress;
 	private long				minTmpFileSize;
+        private boolean useJCE = true;
 
 	public Crypt(final CmdOptions options) throws CloudsyncException
 	{
@@ -77,7 +84,8 @@ public class Crypt
 		}
 		if (allowedKeyLength < Integer.MAX_VALUE)
 		{
-			throw new CloudsyncException("Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files are not installed");
+                        useJCE = false;
+			LOGGER.warning("Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files are not installed");
 		}
 
 		Security.addProvider(new BouncyCastleProvider());
@@ -122,8 +130,16 @@ public class Crypt
 
 			final PGPPBEEncryptedData pbe = (PGPPBEEncryptedData) enc.get(0);
 
-			final InputStream clear = pbe.getDataStream(new JcePBEDataDecryptorFactoryBuilder(new JcaPGPDigestCalculatorProviderBuilder().setProvider("BC")
-					.build()).setProvider("BC").build(passphrase.toCharArray()));
+                        PBEDataDecryptorFactory pbeDataDecryptorFactory = null;
+                        if(useJCE) {
+                            pbeDataDecryptorFactory = new JcePBEDataDecryptorFactoryBuilder(new JcaPGPDigestCalculatorProviderBuilder().setProvider("BC")
+					.build()).setProvider("BC").build(passphrase.toCharArray());
+                        }
+                        else {
+                            BcPGPDigestCalculatorProvider pgpDigestCalculatorProvider = new BcPGPDigestCalculatorProvider();
+                            pbeDataDecryptorFactory = new BcPBEDataDecryptorFactory(passphrase.toCharArray(), pgpDigestCalculatorProvider);
+                        }
+			final InputStream clear = pbe.getDataStream(pbeDataDecryptorFactory);
 
 			PGPObjectFactory pgpFact = new JcaPGPObjectFactory(clear);
 
@@ -204,9 +220,17 @@ public class Crypt
 		{
 			if (armor) out = new ArmoredOutputStream(out);
 
-			final PGPEncryptedDataGenerator encryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(
-					new SecureRandom()).setProvider("BC"));
-			encryptedDataGenerator.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
+                        PGPEncryptedDataGenerator encryptedDataGenerator = null;
+                        if(useJCE) {
+                            encryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(
+                            new SecureRandom()).setProvider("BC"));
+                            encryptedDataGenerator.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
+                        }
+                        else {
+                            PGPDataEncryptorBuilder pgpDataEncryptorBuilder = new BcPGPDataEncryptorBuilder(algorithm);
+                            encryptedDataGenerator = new PGPEncryptedDataGenerator(pgpDataEncryptorBuilder);
+                            encryptedDataGenerator.addMethod(new BcPBEKeyEncryptionMethodGenerator(passphrase.toCharArray()));
+                        }
 			final OutputStream encryptedData = encryptedDataGenerator.open(out, new byte[BUFFER_SIZE]);
 
 			PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZIP);
