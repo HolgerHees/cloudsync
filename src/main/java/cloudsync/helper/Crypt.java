@@ -65,7 +65,7 @@ public class Crypt
 	private final String		passphrase;
 	private boolean				showProgress;
 	private long				minTmpFileSize;
-        private boolean useJCE = true;
+	private boolean useJCE = true;
 
 	public Crypt(final CmdOptions options) throws CloudsyncException
 	{
@@ -84,7 +84,7 @@ public class Crypt
 		}
 		if (allowedKeyLength < Integer.MAX_VALUE)
 		{
-                        useJCE = false;
+			useJCE = false;
 			LOGGER.warning("Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files are not installed");
 		}
 
@@ -130,15 +130,16 @@ public class Crypt
 
 			final PGPPBEEncryptedData pbe = (PGPPBEEncryptedData) enc.get(0);
 
-                        PBEDataDecryptorFactory pbeDataDecryptorFactory = null;
-                        if(useJCE) {
-                            pbeDataDecryptorFactory = new JcePBEDataDecryptorFactoryBuilder(new JcaPGPDigestCalculatorProviderBuilder().setProvider("BC")
-					.build()).setProvider("BC").build(passphrase.toCharArray());
-                        }
-                        else {
-                            BcPGPDigestCalculatorProvider pgpDigestCalculatorProvider = new BcPGPDigestCalculatorProvider();
-                            pbeDataDecryptorFactory = new BcPBEDataDecryptorFactory(passphrase.toCharArray(), pgpDigestCalculatorProvider);
-                        }
+            PBEDataDecryptorFactory pbeDataDecryptorFactory;
+            if(useJCE)
+            {
+	            pbeDataDecryptorFactory = new JcePBEDataDecryptorFactoryBuilder(new JcaPGPDigestCalculatorProviderBuilder().setProvider("BC").build()).setProvider("BC").build(passphrase.toCharArray());
+            }
+            else
+            {
+                BcPGPDigestCalculatorProvider pgpDigestCalculatorProvider = new BcPGPDigestCalculatorProvider();
+                pbeDataDecryptorFactory = new BcPBEDataDecryptorFactory(passphrase.toCharArray(), pgpDigestCalculatorProvider);
+            }
 			final InputStream clear = pbe.getDataStream(pbeDataDecryptorFactory);
 
 			PGPObjectFactory pgpFact = new JcaPGPObjectFactory(clear);
@@ -220,17 +221,19 @@ public class Crypt
 		{
 			if (armor) out = new ArmoredOutputStream(out);
 
-                        PGPEncryptedDataGenerator encryptedDataGenerator = null;
-                        if(useJCE) {
-                            encryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(
-                            new SecureRandom()).setProvider("BC"));
-                            encryptedDataGenerator.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
-                        }
-                        else {
-                            PGPDataEncryptorBuilder pgpDataEncryptorBuilder = new BcPGPDataEncryptorBuilder(algorithm);
-                            encryptedDataGenerator = new PGPEncryptedDataGenerator(pgpDataEncryptorBuilder);
-                            encryptedDataGenerator.addMethod(new BcPBEKeyEncryptionMethodGenerator(passphrase.toCharArray()));
-                        }
+            PGPEncryptedDataGenerator encryptedDataGenerator;
+            if(useJCE)
+            {
+                encryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(algorithm).setSecureRandom(
+                new SecureRandom()).setProvider("BC"));
+                encryptedDataGenerator.addMethod(new JcePBEKeyEncryptionMethodGenerator(passphrase.toCharArray()).setProvider("BC"));
+            }
+            else
+            {
+                PGPDataEncryptorBuilder pgpDataEncryptorBuilder = new BcPGPDataEncryptorBuilder(algorithm);
+                encryptedDataGenerator = new PGPEncryptedDataGenerator(pgpDataEncryptorBuilder);
+                encryptedDataGenerator.addMethod(new BcPBEKeyEncryptionMethodGenerator(passphrase.toCharArray()));
+            }
 			final OutputStream encryptedData = encryptedDataGenerator.open(out, new byte[BUFFER_SIZE]);
 
 			PGPCompressedDataGenerator compressedDataGenerator = new PGPCompressedDataGenerator(CompressionAlgorithmTags.ZIP);
