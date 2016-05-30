@@ -43,7 +43,7 @@ EXCLUDE=.*\\.git/.*|.*\\.svn/.*
 ;FOLLOWLINKS=external
 
 # behavior how to handle file duplications
-;DUPLICATE=stop
+;EXISTING=stop
 
 # Maximum number of stored histories
 ;HISTORY=0
