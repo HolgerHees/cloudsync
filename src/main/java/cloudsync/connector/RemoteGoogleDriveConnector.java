@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -99,6 +100,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	private NetworkErrorType networkErrorBehavior;
 	private int					retries;
 	private int					waitretry;
+	private Charset             charset;
 
 	public RemoteGoogleDriveConnector()
 	{
@@ -114,6 +116,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		retries = options.getRetries();
 		waitretry = options.getWaitRetry() * 1000;
 		networkErrorBehavior = options.getNetworkErrorBehavior();
+		charset = options.getCharset();
 
 		cacheFiles = new HashMap<String, File>();
 		cacheParents = new HashMap<String, File>();
@@ -150,7 +153,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			
 			try
 			{
-				final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile()) : null;
+				final String clientTokenAsJson = Files.exists(this.clientTokenPath) ? FileUtils.readFileToString(this.clientTokenPath.toFile(), charset) : null;
 				
 				credential = new GoogleCredential.Builder().setTransport(new NetHttpTransport()).setJsonFactory(new GsonFactory())
 						.setClientSecrets(googleDriveOptions.getClientID(), googleDriveOptions.getClientSecret()).build();
@@ -188,7 +191,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		generator.flush();
 		generator.close();
 
-		FileUtils.writeStringToFile(clientTokenPath.toFile(), jsonTrWriter.toString());
+		FileUtils.writeStringToFile(clientTokenPath.toFile(), jsonTrWriter.toString(), charset);
 	}
 
 	@Override

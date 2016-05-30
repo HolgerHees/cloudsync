@@ -3,6 +3,7 @@ package cloudsync.helper;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -11,10 +12,9 @@ import java.util.Properties;
 import cloudsync.exceptions.InfoException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
@@ -69,52 +69,59 @@ public class CmdOptions
 	{
 		this.args = args;
 
-		positions = new ArrayList<Option>();
+		positions = new ArrayList<>();
 
 		options = new Options();
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Create or refresh backup of <path>");
-		OptionBuilder.withLongOpt(SyncType.BACKUP.getName());
-		Option option = OptionBuilder.create("b");
+
+		Option option = Option.builder("b")
+			.hasArg()
+			.argName("path")
+			.desc("Create or refresh backup of <path>")
+			.longOpt(SyncType.BACKUP.getName())
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Restore a backup into <path>");
-		OptionBuilder.withLongOpt(SyncType.RESTORE.getName());
-		option = OptionBuilder.create("r");
+		option = Option.builder("r")
+			.hasArg()
+			.argName("path")
+			.desc("Restore a backup into <path>")
+			.longOpt(SyncType.RESTORE.getName())
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Repair 'cloudsync*.cache' file and put leftover file into <path>");
-		OptionBuilder.withLongOpt(SyncType.CLEAN.getName());
-		option = OptionBuilder.create("c");
+		option = Option.builder("c")
+			.hasArg()
+			.argName("path")
+			.desc("Repair 'cloudsync*.cache' file and put leftover file into <path>")
+			.longOpt(SyncType.CLEAN.getName())
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("List the contents of an backup");
-		OptionBuilder.withLongOpt(SyncType.LIST.getName());
-		option = OptionBuilder.create("l");
+		option = Option.builder("l")
+			.desc("List the contents of an backup")
+			.longOpt(SyncType.LIST.getName())
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("name");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Backup name of --backup, --restore, --clean or --list");
-		OptionBuilder.withLongOpt("name");
-		option = OptionBuilder.create("n");
+		option = Option.builder("n")
+			.hasArg()
+			.argName("name")
+			.desc("Backup name of --backup, --restore, --clean or --list")
+			.longOpt("name")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Config file path. Default is './config/cloudsync.config'");
-		OptionBuilder.withLongOpt("config");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("path")
+			.desc("Config file path. Default is './config/cloudsync.config'")
+			.longOpt("config")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
@@ -122,11 +129,12 @@ public class CmdOptions
 		description += "<extern> - follow symbolic links if the target is outside from the current directory hierarchy - (default)\n";
 		description += "<all> - follow all symbolic links\n";
 		description += "<none> - don't follow any symbolic links";
-		OptionBuilder.withArgName("extern|all|none");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("followlinks");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("extern|all|none")
+			.desc(description)
+			.longOpt("followlinks")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
@@ -135,39 +143,41 @@ public class CmdOptions
 		description += "<update> - replace file\n";
 		description += "<skip> - skip file\n";
 		description += "<rename> - extend the name with an autoincrement number";
-		OptionBuilder.withArgName("stop|update|skip|rename");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("existing");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("stop|update|skip|rename")
+			.desc(description)
+			.longOpt("existing")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
 		description = "Before remove or update a file or folder move it to a history folder.\n";
 		description += "Use a maximum of <count> history folders";
-		OptionBuilder.withArgName("count");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("history");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("count")
+			.desc(description)
+			.longOpt("history")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("pattern");
-		OptionBuilder.hasArg();
-		OptionBuilder
-				.withDescription("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
-		OptionBuilder.withLongOpt("include");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("pattern")
+			.desc("Include content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.")
+			.longOpt("include")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("pattern");
-		OptionBuilder.hasArg();
-		OptionBuilder
-				.withDescription("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.");
-		OptionBuilder.withLongOpt("exclude");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("pattern")
+			.desc("Exclude content of --backup, --restore and --list if the path matches the regex based ^<pattern>$. Multiple patterns can be separated with an '|' character.")
+			.longOpt("exclude")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
@@ -175,57 +185,65 @@ public class CmdOptions
 		description += "<set> - set all permissions and ownerships - (default)\n";
 		description += "<ignore> - ignores all permissions and ownerships\n";
 		description += "<try> - ignores invalid and not assignable permissions and ownerships\n";
-		OptionBuilder.withArgName("set|ignore|try");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("permissions");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("set|ignore|try")
+			.desc(description)
+			.longOpt("permissions")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Don't use 'cloudsync*.cache' file for --backup or --list (much slower)");
-		OptionBuilder.withLongOpt("nocache");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.desc("Don't use 'cloudsync*.cache' file for --backup or --list (much slower)")
+			.longOpt("nocache")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Ignore a existing pid file. Should only be used after a previous crashed job.");
-		OptionBuilder.withLongOpt("forcestart");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.desc("Ignore a existing pid file. Should only be used after a previous crashed job.")
+			.longOpt("forcestart")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Don't encrypt uploaded data");
-		OptionBuilder.withLongOpt("noencryption");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.desc("Don't encrypt uploaded data")
+			.longOpt("noencryption")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Perform a trial run of --backup or --restore with no changes made.");
-		OptionBuilder.withLongOpt("dry-run");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.desc("Perform a trial run of --backup or --restore with no changes made.")
+			.longOpt("dry-run")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Show progress during transfer and encryption.");
-		OptionBuilder.withLongOpt("progress");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.desc("Show progress during transfer and encryption.")
+			.longOpt("progress")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Number of network operation retries before an error is thrown (default: 6).");
-		OptionBuilder.withLongOpt("retries");
-		OptionBuilder.withArgName("number");
-		OptionBuilder.hasArg();
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("number")
+			.desc("Number of network operation retries before an error is thrown (default: 6).")
+			.longOpt("retries")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Number of seconds between 2 retries (default: 10).");
-		OptionBuilder.withLongOpt("waitretry");
-		OptionBuilder.withArgName("seconds");
-		OptionBuilder.hasArg();
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("seconds")
+			.desc("Number of seconds between 2 retries (default: 10).")
+			.longOpt("waitretry")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
@@ -233,65 +251,72 @@ public class CmdOptions
 		description += "<exception> - Throw an exception - (default)\n";
 		description += "<ask> - Show a command prompt (Y/n) to continue\n";
 		description += "<continue> - Show a warning and continue\n";
-		OptionBuilder.withArgName("exception|ask|continue");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("network-error");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("exception|ask|continue")
+			.desc(description)
+			.longOpt("network-error")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
 		description = "How to continue on blocked files or permission problems\n";
 		description += "<exception> - Throw an exception - (default)\n";
 		description += "<message> - Show a error log message\n";
-		OptionBuilder.withArgName("exception|message");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription(description);
-		OptionBuilder.withLongOpt("file-error");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("exception|message")
+			.desc(description)
+			.longOpt("file-error")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Log message to <path>");
-		OptionBuilder.withLongOpt("logfile");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("path")
+			.desc("Log message to <path>")
+			.longOpt("logfile")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("path");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Cache data to <path>");
-		OptionBuilder.withLongOpt("cachefile");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("path")
+			.desc("Cache data to <path>")
+			.longOpt("cachefile")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withArgName("size");
-		OptionBuilder.hasArg();
-		OptionBuilder.withDescription("Minimum file size <size> in bytes to use tmp files (default: 134217728)");
-		OptionBuilder.withLongOpt("min_tmp_file_size");
-		option = OptionBuilder.create();
+		option = Option.builder()
+			.hasArg()
+			.argName("size")
+			.desc("Minimum file size <size> in bytes to use tmp files (default: 134217728)")
+			.longOpt("min_tmp_file_size")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Show version number");
-		OptionBuilder.withLongOpt("version");
-		option = OptionBuilder.create("v");
+		option = Option.builder("v")
+			.desc("Show version number")
+			.longOpt("version")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 
-		OptionBuilder.withDescription("Show this help");
-		OptionBuilder.withLongOpt("help");
-		option = OptionBuilder.create("h");
+		option = Option.builder("h")
+			.desc("Show this help")
+			.longOpt("help")
+			.build();
 		options.addOption(option);
 		positions.add(option);
 	}
 
 	public void parse() throws UsageException, CloudsyncException, InfoException
 	{
-		final CommandLineParser parser = new GnuParser();
+		final CommandLineParser parser = new DefaultParser();
 		CommandLine cmd;
 		try
 		{
@@ -645,4 +670,6 @@ public class CmdOptions
 	{
 		return remoteConnector;
 	}
+
+	public Charset getCharset(){ return Charset.defaultCharset(); }
 }

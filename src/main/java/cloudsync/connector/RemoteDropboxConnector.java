@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -76,6 +77,8 @@ public class RemoteDropboxConnector implements RemoteConnector
 
 	private boolean					isInitialized;
 
+	private Charset                 charset;
+
 	public RemoteDropboxConnector()
 	{
 	}
@@ -86,7 +89,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 		RemoteDropboxOptions dropboxOptions = new RemoteDropboxOptions(options, backupName);
 		Integer history = options.getHistory();
 
-		cacheFiles = new HashMap<String, DbxEntry>();
+		cacheFiles = new HashMap<>();
 
 		this.basePath = Helper.trim(dropboxOptions.getBasePath(), SEPARATOR);
 		this.backupName = backupName;
@@ -98,7 +101,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 
 		try
 		{
-			String token = Files.exists(this.tokenPath) ? FileUtils.readFileToString(this.tokenPath.toFile()) : null;
+			String token = Files.exists(this.tokenPath) ? FileUtils.readFileToString(this.tokenPath.toFile(), charset) : null;
 
 			DbxAppInfo appInfo = new DbxAppInfo(dropboxOptions.getAppKey(), dropboxOptions.getAppSecret());
 
@@ -116,7 +119,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 				DbxAuthFinish authFinish = webAuth.finish(code);
 				token = authFinish.accessToken;
 
-				FileUtils.write(this.tokenPath.toFile(), token);
+				FileUtils.write(this.tokenPath.toFile(), token, charset);
 
 				LOGGER.log(Level.INFO, "client token stored in '" + this.tokenPath + "'");
 			}

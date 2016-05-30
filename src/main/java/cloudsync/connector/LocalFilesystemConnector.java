@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -223,7 +224,7 @@ public class LocalFilesystemConnector
 				{
 					remoteStreamData = handler.getRemoteProcessedBinary(item);
 
-					final String link = IOUtils.toString( remoteStreamData.getDecryptedStream() );
+					final String link = IOUtils.toString( remoteStreamData.getDecryptedStream(), Charset.defaultCharset());
 					Files.createSymbolicLink(path, Paths.get(link));
 
 				}
