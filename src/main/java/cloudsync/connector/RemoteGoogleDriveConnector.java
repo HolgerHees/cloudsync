@@ -254,6 +254,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 					}
 				}
 				retryCount = validateException("remote upload", item, e, retryCount);
+				if( retryCount == -1 ) // ignore a failing item (workaround for now)
+					return;
 			}
 		}
 		while (true);
@@ -319,6 +321,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote update", item, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -359,6 +363,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote remove", item, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -384,6 +390,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote get", item, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -412,6 +420,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote fetch", parentItem, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -620,6 +630,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote search", parentItem, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -767,6 +779,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			catch (final IOException e)
 			{
 				retryCount = validateException("remote get of '" + path + "'", null, e, retryCount);
+				if(retryCount < 0) // TODO workaround - fix this later
+					retryCount = 0;
 			}
 		}
 		while (true);
@@ -868,7 +882,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			else if( NetworkErrorType.CONTINUE.equals(networkErrorBehavior) )
 			{
 				lastValidate = System.currentTimeMillis();
-				return 0;
+				return -1;
 			}
 		}
 
