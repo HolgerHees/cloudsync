@@ -6,7 +6,7 @@ Other compareable backup solutions like [duplicity](http://duplicity.nongnu.org)
 
 To get a first impression you should take a look at [this screenshot](https://github.com/HolgerHees/cloudsync/wiki/Home).
 
-The encryption is based on OpenPGP with AES 256 and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
+The encryption is based on OpenPGP with AES 256 (optional) and a passphrase. It is possible to decrypt uploaded files with a normal OpenPGP compatible tool like 'gpg' or 'gpg2'.
 
 Encrypted data includes:
 - filetype [folder,file,symlink]
@@ -26,7 +26,7 @@ To provide additional cloud targets like Amazon Cloud Drive or Microsoft OneDriv
 ## Requirements
 
 1. Java >= 7
-2. [Java Cryptography Extension (JCE)](http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.html)
+2. [Java Cryptography Extension (JCE)](http://www.oracle.com/technetwork/java/javase/downloads/jce-7-download-432124.html) (optional to support AES256)
 3. [Maven](http://maven.apache.org/download.cgi)
 
 ## Install
