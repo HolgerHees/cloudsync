@@ -265,6 +265,14 @@ public class CmdOptions
 		options.addOption(option);
 		positions.add(option);
 
+		OptionBuilder.withArgName("size");
+		OptionBuilder.hasArg();
+		OptionBuilder.withDescription("Minimum file size <size> in bytes to use tmp files (default: 134217728)");
+		OptionBuilder.withLongOpt("min_tmp_file_size");
+		option = OptionBuilder.create();
+		options.addOption(option);
+		positions.add(option);
+
 		OptionBuilder.withDescription("Show version number");
 		OptionBuilder.withLongOpt("version");
 		option = OptionBuilder.create("v");
