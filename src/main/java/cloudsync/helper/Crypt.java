@@ -291,8 +291,17 @@ public class Crypt
 				}
 				catch (IOException e)
 				{
-					throw new FileIOException("can't encrypt data", e);
+					throw new FileIOException("can't close armor", e);
 				}
+			}
+
+			try
+			{
+				output.close();
+			}
+			catch (IOException e)
+			{
+				throw new FileIOException("can't close output", e);
 			}
 		}
 	}
