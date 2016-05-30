@@ -35,15 +35,16 @@ import org.apache.commons.lang3.StringUtils;
 import cloudsync.connector.LocalFilesystemConnector;
 import cloudsync.connector.RemoteConnector;
 import cloudsync.exceptions.CloudsyncException;
-import cloudsync.model.ExistingBehaviorType;
+import cloudsync.model.options.FileErrorType;
+import cloudsync.model.options.ExistingType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
-import cloudsync.model.LinkType;
-import cloudsync.model.PermissionType;
+import cloudsync.model.options.FollowLinkType;
+import cloudsync.model.options.PermissionType;
 import cloudsync.model.RemoteItem;
 import cloudsync.model.LocalStreamData;
 import cloudsync.model.RemoteStreamData;
-import cloudsync.model.SyncType;
+import cloudsync.model.options.SyncType;
 
 public class Handler
 {
@@ -57,9 +58,9 @@ public class Handler
 
 	private final Item						root;
 	private final List<Item>				duplicates;
-	private final ExistingBehaviorType		existingFlag;
-	private final LinkType					followlinks;
-	private final PermissionType			permissionType;
+	private final ExistingType existingFlag;
+	private final FollowLinkType followlinks;
+	private final PermissionType permissionType;
 
 	private Path							cacheFilePath;
 	private Path							lockFilePath;
@@ -68,7 +69,7 @@ public class Handler
 
 	private boolean							isLocked	= false;
 
-	private boolean 						logAndContinue;
+	private FileErrorType fileErrorBehavior;
 
 	class Status
 	{
@@ -79,7 +80,7 @@ public class Handler
 	}
 
 	public Handler(String name, final LocalFilesystemConnector localConnection, final RemoteConnector remoteConnection, final Crypt crypt,
-			final ExistingBehaviorType existingFlag, final LinkType followlinks, final PermissionType permissionType, final boolean logAndContinue )
+			final ExistingType existingFlag, final FollowLinkType followlinks, final PermissionType permissionType, final FileErrorType fileErrorBehavior)
 	{
 		this.name = name;
 		this.localConnection = localConnection;
@@ -89,7 +90,7 @@ public class Handler
 		this.followlinks = followlinks;
 		this.permissionType = permissionType;
 
-		this.logAndContinue = logAndContinue;
+		this.fileErrorBehavior = fileErrorBehavior;
 
 		root = Item.getDummyRoot();
 		duplicates = new ArrayList<Item>();
@@ -395,10 +396,10 @@ public class Handler
 			}
 			for (final Item item : list)
 			{
-				localConnection.prepareUpload(this, item, ExistingBehaviorType.RENAME);
+				localConnection.prepareUpload(this, item, ExistingType.RENAME);
 				LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
 				localConnection.prepareParent(this, item);
-				localConnection.upload(this, item, ExistingBehaviorType.RENAME, permissionType);
+				localConnection.upload(this, item, ExistingType.RENAME, permissionType);
 			}
 
 			Collections.reverse(list);
@@ -593,7 +594,7 @@ public class Handler
 			catch (FileIOException e)
 			{
 				status.skip++;
-				if( logAndContinue )
+				if(FileErrorType.MESSAGE.equals( fileErrorBehavior))
 				{
 					LOGGER.log(Level.SEVERE, "Skip '" + backupPath + "'. " + e.getMessage());
 					if( remoteChildItem != null ) {

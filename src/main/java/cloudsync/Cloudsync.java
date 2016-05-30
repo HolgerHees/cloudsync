@@ -24,7 +24,7 @@ import cloudsync.helper.Handler;
 import cloudsync.logging.LogconsoleHandler;
 import cloudsync.logging.LogfileFormatter;
 import cloudsync.logging.LogfileHandler;
-import cloudsync.model.SyncType;
+import cloudsync.model.options.SyncType;
 
 public class Cloudsync
 {
@@ -117,7 +117,7 @@ public class Cloudsync
 			}
 
 			handler = new Handler(name, localConnection, remoteConnector, options.getNoEncryption() ? null : new Crypt(options), options.getExistingBehavior(), options.getFollowLinks(),
-					options.getPermissionType(),options.logAndContinue());
+					options.getPermissionType(),options.getFileErrorBehavior());
 			handler.init(type, options.getCacheFile(), options.getLockFile(), options.getPIDFile(), options.getNoCache(), options.getForceStart());
 
 			switch ( type )

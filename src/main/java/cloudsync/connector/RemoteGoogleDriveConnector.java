@@ -33,6 +33,7 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
+import cloudsync.model.options.NetworkErrorType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
 import cloudsync.model.RemoteItem;
@@ -95,7 +96,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	private Integer				historyCount;
 	private long				lastValidate				= 0;
 	private boolean				showProgress;
-	private boolean				askToContinue;
+	private NetworkErrorType networkErrorBehavior;
 	private int					retries;
 	private int					waitretry;
 
@@ -112,7 +113,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		showProgress = options.showProgress();
 		retries = options.getRetries();
 		waitretry = options.getWaitRetry() * 1000;
-		askToContinue = options.askToContinue();
+		networkErrorBehavior = options.getNetworkErrorBehavior();
 
 		cacheFiles = new HashMap<String, File>();
 		cacheParents = new HashMap<String, File>();
@@ -837,25 +838,34 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			return count;
 		}
 
-		if (askToContinue && e instanceof UnknownHostException)
+		if (e instanceof UnknownHostException)
 		{
 			LOGGER.log(Level.WARNING, "Connecting to RemoteHost " + getExceptionMessage(e) + " failed.");
-			String answer = null;
-			while (answer == null || (!"Y".equals(answer) && !"n".equals(answer)))
-			{
-				System.out.print("Retry again (Y/n) ");
 
-				try
+			if( NetworkErrorType.ASK.equals(networkErrorBehavior) )
+			{
+				String answer = null;
+				while (answer == null || (!"Y".equals(answer) && !"n".equals(answer)))
 				{
-					answer = new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
+					System.out.print("Retry again (Y/n) ");
+
+					try
+					{
+						answer = new BufferedReader(new InputStreamReader(System.in)).readLine().trim();
+					}
+					catch (IOException _e)
+					{
+						break;
+					}
 				}
-				catch (IOException _e)
+
+				if ("Y".equals(answer))
 				{
-					break;
+					lastValidate = System.currentTimeMillis();
+					return 0;
 				}
 			}
-
-			if ("Y".equals(answer))
+			else if( NetworkErrorType.CONTINUE.equals(networkErrorBehavior) )
 			{
 				lastValidate = System.currentTimeMillis();
 				return 0;

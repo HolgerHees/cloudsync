@@ -50,11 +50,11 @@ import cloudsync.exceptions.CloudsyncException;
 import cloudsync.helper.CmdOptions;
 import cloudsync.helper.Handler;
 import cloudsync.helper.Helper;
-import cloudsync.model.ExistingBehaviorType;
+import cloudsync.model.options.ExistingType;
 import cloudsync.model.Item;
 import cloudsync.model.ItemType;
-import cloudsync.model.LinkType;
-import cloudsync.model.PermissionType;
+import cloudsync.model.options.FollowLinkType;
+import cloudsync.model.options.PermissionType;
 import cloudsync.model.LocalStreamData;
 import cloudsync.model.RemoteStreamData;
 
@@ -114,9 +114,9 @@ public class LocalFilesystemConnector
 		}
 	}
 
-	public void prepareUpload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag)
+	public void prepareUpload(final Handler handler, final Item item, final ExistingType duplicateFlag)
 	{
-		if (!duplicateFlag.equals(ExistingBehaviorType.RENAME))
+		if (!duplicateFlag.equals(ExistingType.RENAME))
 		{
 			return;
 		}
@@ -156,7 +156,7 @@ public class LocalFilesystemConnector
 		}
 	}
 
-	public void upload(final Handler handler, final Item item, final ExistingBehaviorType duplicateFlag, final PermissionType permissionType)
+	public void upload(final Handler handler, final Item item, final ExistingType duplicateFlag, final PermissionType permissionType)
 			throws CloudsyncException
 	{
 		final String _path = localPath + Item.SEPARATOR + item.getPath();
@@ -165,12 +165,12 @@ public class LocalFilesystemConnector
 
 		if (exists(path))
 		{
-			if (duplicateFlag.equals(ExistingBehaviorType.SKIP))
+			if (duplicateFlag.equals(ExistingType.SKIP))
 			{
 				return;
 			}
 
-			if (!duplicateFlag.equals(ExistingBehaviorType.UPDATE))
+			if (!duplicateFlag.equals(ExistingType.UPDATE))
 			{
 				throw new CloudsyncException("Item '" + item.getPath() + "' already exists. Try to specify another '--duplicate' behavior.");
 			}
@@ -480,7 +480,7 @@ public class LocalFilesystemConnector
 		return folder.listFiles();
 	}
 
-	public Item getItem(File file, final LinkType followlinks) throws FileIOException, NoSuchFileException
+	public Item getItem(File file, final FollowLinkType followlinks) throws FileIOException, NoSuchFileException
 	{
 		try
 		{
@@ -503,7 +503,7 @@ public class LocalFilesystemConnector
 				}
 				target = Paths.get(target).toFile().getCanonicalPath();
 
-				if (!followlinks.equals(LinkType.NONE) && followlinks.equals(LinkType.EXTERNAL) && !target.startsWith(localPath))
+				if (!followlinks.equals(FollowLinkType.NONE) && followlinks.equals(FollowLinkType.EXTERNAL) && !target.startsWith(localPath))
 				{
 					final Path targetPath = Paths.get(target);
 					if (Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS))

@@ -21,11 +21,13 @@ import org.apache.commons.lang3.StringUtils;
 
 import cloudsync.exceptions.CloudsyncException;
 import cloudsync.exceptions.UsageException;
-import cloudsync.model.ExistingBehaviorType;
+import cloudsync.model.options.NetworkErrorType;
+import cloudsync.model.options.FileErrorType;
+import cloudsync.model.options.ExistingType;
 import cloudsync.model.Item;
-import cloudsync.model.LinkType;
-import cloudsync.model.PermissionType;
-import cloudsync.model.SyncType;
+import cloudsync.model.options.FollowLinkType;
+import cloudsync.model.options.PermissionType;
+import cloudsync.model.options.SyncType;
 
 public class CmdOptions
 {
@@ -46,16 +48,16 @@ public class CmdOptions
 	private String					cachefilePath;
 	private String					lockfilePath;
 	private String					pidfilePath;
-	private PermissionType			permissions;
+	private PermissionType permissions;
 	private boolean					nocache;
 	private boolean					forcestart;
 	private boolean					dryrun;
 	private boolean					showProgress;
-	private boolean					askToContinue;
-	private boolean					logAndContinue;
+	private NetworkErrorType networkErrorBehavior;
+	private FileErrorType fileErrorBehavior;
 	private boolean					noencryption;
-	private LinkType				followlinks;
-	private ExistingBehaviorType	existingBehavior;
+	private FollowLinkType followlinks;
+	private ExistingType existingBehavior;
 	private String					remoteConnector;
 
 	private int						retries;
@@ -230,7 +232,8 @@ public class CmdOptions
 		description = "How to continue on network problems\n";
 		description += "<exception> - Throw an exception - (default)\n";
 		description += "<ask> - Show a command prompt (Y/n) to continue\n";
-		OptionBuilder.withArgName("exception|ask");
+		description += "<continue> - Show a warning and continue\n";
+		OptionBuilder.withArgName("exception|ask|continue");
 		OptionBuilder.hasArg();
 		OptionBuilder.withDescription(description);
 		OptionBuilder.withLongOpt("network-error");
@@ -339,12 +342,12 @@ public class CmdOptions
 
 		remoteConnector = prop.getProperty("REMOTE_CONNECTOR");
 
-		String value = getOptionValue(cmd, "followlinks", LinkType.EXTERNAL.getName());
-		followlinks = LinkType.fromName(value);
-		value = getOptionValue(cmd, "existing", SyncType.CLEAN.equals(type) ? ExistingBehaviorType.RENAME.getName() : ExistingBehaviorType.STOP.getName());
-		existingBehavior = ExistingBehaviorType.fromName(value);
+		String value = getOptionValue(cmd, "followlinks", FollowLinkType.EXTERNAL.getName());
+		followlinks = FollowLinkType.fromStringIgnoreCase(value);
+		value = getOptionValue(cmd, "existing", SyncType.CLEAN.equals(type) ? ExistingType.RENAME.getName() : ExistingType.STOP.getName());
+		existingBehavior = ExistingType.fromStringIgnoreCase(value);
 		value = getOptionValue(cmd, "permissions", PermissionType.SET.getName());
-		permissions = PermissionType.fromName(value);
+		permissions = PermissionType.fromStringIgnoreCase(value);
 
 		history = SyncType.BACKUP.equals(type) ? Integer.parseInt(getOptionValue(cmd, "history", "0")) : 0;
 
@@ -377,10 +380,10 @@ public class CmdOptions
 		}
 
 		value = getOptionValue(cmd, "network-error", "exception");
-		askToContinue = value.equals("ask");
+		networkErrorBehavior = NetworkErrorType.fromStringIgnoreCase( value);
 
 		value = getOptionValue(cmd, "file-error", "exception");
-		logAndContinue = value.equals("message");
+		fileErrorBehavior = FileErrorType.fromStringIgnoreCase( value);
 
 		nocache = cmd.hasOption("nocache") || SyncType.CLEAN.equals(type);
 		forcestart = cmd.hasOption("forcestart");
@@ -578,14 +581,14 @@ public class CmdOptions
 		return showProgress;
 	}
 
-	public boolean askToContinue()
+	public NetworkErrorType getNetworkErrorBehavior()
 	{
-		return askToContinue;
+		return networkErrorBehavior;
 	}
 
-	public boolean logAndContinue()
+	public FileErrorType getFileErrorBehavior()
 	{
-		return logAndContinue;
+		return fileErrorBehavior;
 	}
 
 	public int getRetries()
@@ -603,12 +606,12 @@ public class CmdOptions
 		return minTmpFileSize;
 	}
 
-	public LinkType getFollowLinks()
+	public FollowLinkType getFollowLinks()
 	{
 		return followlinks;
 	}
 
-	public ExistingBehaviorType getExistingBehavior()
+	public ExistingType getExistingBehavior()
 	{
 		return existingBehavior;
 	}

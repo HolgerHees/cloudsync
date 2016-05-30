@@ -1,4 +1,4 @@
-package cloudsync.model;
+package cloudsync.model.options;
 
 public enum PermissionType
 {
@@ -6,7 +6,7 @@ public enum PermissionType
 
 	private String	name;
 
-	private PermissionType(final String name)
+	PermissionType(final String name)
 	{
 		this.name = name;
 	}
@@ -16,11 +16,16 @@ public enum PermissionType
 		return name;
 	}
 
-	public static PermissionType fromName(final String name)
+	public static PermissionType fromStringIgnoreCase(final String name)
 	{
+		if(name == null)
+		{
+			return null;
+		}
+
 		for (final PermissionType type : PermissionType.values())
 		{
-			if (!type.name.equals(name))
+			if (!type.name.equals(name.toLowerCase()))
 			{
 				continue;
 			}
