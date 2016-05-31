@@ -352,7 +352,7 @@ public class CmdOptions
 			config = System.getProperty("user.dir") + Item.SEPARATOR + config;
 		}
 
-		boolean configValid = config != null && new File(config).isFile();
+		boolean configValid = new File(config).isFile();
 		prop = new Properties();
 		try
 		{
@@ -441,12 +441,12 @@ public class CmdOptions
 			throw new InfoException("cloudsync " + getClass().getPackage().getImplementationVersion());
 		}
 		else if (cmd.hasOption("help") || type == null || name == null || followlinks == null || existingBehavior == null || retries == 0 || waitretry == 0
-				|| permissions == null || !baseValid || config == null || !configValid || !logfileValid || !cachefileValid)
+				|| permissions == null || !baseValid || !configValid || !logfileValid || !cachefileValid)
 		{
 			int possibleWrongOptions = cmd.getOptions().length;
 			if (cmd.hasOption("help")) possibleWrongOptions--;
 
-			List<String> messages = new ArrayList<String>();
+			List<String> messages = new ArrayList<>();
 			if (possibleWrongOptions > 0)
 			{
 				messages.add("missing or wrong options\nerror(s):");
@@ -482,11 +482,7 @@ public class CmdOptions
 				{
 					messages.add(" Wrong --permissions <behavior> set");
 				}
-				if (config == null)
-				{
-					messages.add(" Missing --config <path>");
-				}
-				else if (!configValid)
+				if (!configValid)
 				{
 					messages.add(" --config <path> not valid");
 				}
@@ -513,7 +509,7 @@ public class CmdOptions
 		}
 	}
 
-	public String getOptionValue(CommandLine cmd, String key, String defaultValue)
+	private String getOptionValue(CommandLine cmd, String key, String defaultValue)
 	{
 		String value = cmd.getOptionValue(key);
 		if (!StringUtils.isEmpty(value)) return value;

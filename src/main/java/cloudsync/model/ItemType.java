@@ -5,11 +5,11 @@ public enum ItemType
 	UNKNOWN(0, "unknown", "unknown"), FOLDER(1, "folder", "folder"), FILE(2, "file", "files"), LINK(3, "link", "links"), DUPLICATE(99, "duplicate",
 			"duplicates");
 
-	private Integer	value;
-	private String	name;
-	private String	namePlural;
+	private final Integer	value;
+	private final String	name;
+	private final String	namePlural;
 
-	private ItemType(final Integer value, final String name, final String namePlural)
+	ItemType(final Integer value, final String name, final String namePlural)
 	{
 		this.value = value;
 		this.name = name;

@@ -4,8 +4,8 @@ import java.nio.file.attribute.FileTime;
 
 public class RemoteItem extends Item
 {
-	private Long		remoteFilesize;
-	private FileTime	remoteCreationtime;
+	private final Long		remoteFilesize;
+	private final FileTime	remoteCreationtime;
 
 	public RemoteItem(Long remoteFilesize, FileTime remoteCreationtime)
 	{

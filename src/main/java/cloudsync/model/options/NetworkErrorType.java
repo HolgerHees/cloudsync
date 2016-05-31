@@ -4,7 +4,7 @@ public enum NetworkErrorType
 {
 	EXCEPTION("exception"), ASK("ask"), CONTINUE("continue");
 
-	private String name;
+	private final String name;
 
 	NetworkErrorType(final String name)
 	{

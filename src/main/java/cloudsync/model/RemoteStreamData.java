@@ -6,8 +6,8 @@ import org.apache.commons.io.IOUtils;
 
 public class RemoteStreamData
 {
-	private InputStream	encryptedStream;
-	private InputStream	decryptedStream;
+	private final InputStream	encryptedStream;
+	private final InputStream	decryptedStream;
 
 	public RemoteStreamData(InputStream encryptedStream, InputStream decryptedStream)
 	{

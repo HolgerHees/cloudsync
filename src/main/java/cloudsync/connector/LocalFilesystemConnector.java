@@ -9,7 +9,6 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.AclEntry;
@@ -66,7 +65,7 @@ public class LocalFilesystemConnector
 	private static final int							BUFFER_SIZE		= 1 << 16;
 	private static final DecimalFormat					df				= new DecimalFormat("00");
 
-	private static Map<Integer, PosixFilePermission>	toPermMapping	= new HashMap<Integer, PosixFilePermission>();
+	private static final Map<Integer, PosixFilePermission>	toPermMapping	= new HashMap<>();
 	static
 	{
 		toPermMapping.put(0001, PosixFilePermission.OTHERS_EXECUTE);
@@ -80,9 +79,9 @@ public class LocalFilesystemConnector
 		toPermMapping.put(0400, PosixFilePermission.OWNER_READ);
 	}
 
-	private static Map<PosixFilePermission, Integer>	fromPermMapping	= new HashMap<PosixFilePermission, Integer>();
+	private static final Map<PosixFilePermission, Integer>	fromPermMapping	= new HashMap<>();
 
-	private static Map<String, Boolean>					principal_state	= new HashMap<String, Boolean>();
+	private static final Map<String, Boolean>			principal_state	= new HashMap<>();
 
 	private final String								localPath;
 	private final boolean								showProgress;
@@ -253,7 +252,7 @@ public class LocalFilesystemConnector
 					double current = 0;
 
 					byte[] buffer = new byte[BUFFER_SIZE];
-					int len = 0;
+					int len;
 
 					// 2 MB
 					if (showProgress && length > 2097152)
@@ -403,14 +402,14 @@ public class LocalFilesystemConnector
 									aclEntryBuilder.setType(AclEntryType.valueOf(values[i]));
 									aclEntryBuilder.setPrincipal(lookupService.lookupPrincipalByName(values[i + 1]));
 
-									Set<AclEntryFlag> flags = new HashSet<AclEntryFlag>();
+									Set<AclEntryFlag> flags = new HashSet<>();
 									for (String flag : StringUtils.splitPreserveAllTokens(values[i + 2], ","))
 									{
 										flags.add(AclEntryFlag.valueOf(flag));
 									}
 									if (flags.size() > 0) aclEntryBuilder.setFlags(flags);
 
-									Set<AclEntryPermission> aclPermissions = new HashSet<AclEntryPermission>();
+									Set<AclEntryPermission> aclPermissions = new HashSet<>();
 									for (String flag : StringUtils.splitPreserveAllTokens(values[i + 3], ","))
 									{
 										aclPermissions.add(AclEntryPermission.valueOf(flag));
@@ -481,13 +480,13 @@ public class LocalFilesystemConnector
 		return folder.listFiles();
 	}
 
-	public Item getItem(File file, final FollowLinkType followlinks) throws FileIOException, NoSuchFileException
+	public Item getItem(File file, final FollowLinkType followlinks) throws FileIOException
 	{
 		try
 		{
 			Path path = file.toPath();
 
-			ItemType type = ItemType.UNKNOWN;
+			ItemType type;
 
 			if (Files.isSymbolicLink(path))
 			{
@@ -537,7 +536,7 @@ public class LocalFilesystemConnector
 				type = ItemType.UNKNOWN;
 			}
 
-			Map<String, String[]> attributes = new HashMap<String, String[]>();
+			Map<String, String[]> attributes = new HashMap<>();
 
 			PosixFileAttributeView posixView = Files.getFileAttributeView(path, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
 			if (posixView != null)
@@ -576,15 +575,15 @@ public class LocalFilesystemConnector
 					List<AclEntry> aclList = getLocalAclEntries(type, parentAclView.getAcl(), aclView.getAcl());
 					if (aclList.size() > 0)
 					{
-						List<String> aclData = new ArrayList<String>();
+						List<String> aclData = new ArrayList<>();
 						for (AclEntry acl : aclList)
 						{
-							List<String> flags = new ArrayList<String>();
+							List<String> flags = new ArrayList<>();
 							for (AclEntryFlag flag : acl.flags())
 							{
 								flags.add(flag.name());
 							}
-							List<String> permissions = new ArrayList<String>();
+							List<String> permissions = new ArrayList<>();
 							for (AclEntryPermission permission : acl.permissions())
 							{
 								permissions.add(permission.name());
@@ -621,7 +620,7 @@ public class LocalFilesystemConnector
 
 	private List<AclEntry> getLocalAclEntries(ItemType type, List<AclEntry> parentAclList, List<AclEntry> childAclList)
 	{
-		List<AclEntry> aclList = new ArrayList<AclEntry>();
+		List<AclEntry> aclList = new ArrayList<>();
 
 		for (AclEntry childEntry : childAclList)
 		{
@@ -704,8 +703,8 @@ public class LocalFilesystemConnector
 
 	private Set<PosixFilePermission> toPermissions(final Integer perm)
 	{
-		final int mode = perm.intValue();
-		final Set<PosixFilePermission> permissions = new HashSet<PosixFilePermission>();
+		final int mode = perm;
+		final Set<PosixFilePermission> permissions = new HashSet<>();
 		for (final int mask : toPermMapping.keySet())
 		{
 			if (mask == (mode & mask))

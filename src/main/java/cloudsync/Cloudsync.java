@@ -123,10 +123,10 @@ public class Cloudsync
 			switch ( type )
 			{
 				case BACKUP:
-					handler.backup(!options.isDryRun(), includePatterns, excludePatterns);
+					handler.backup(options.isDryRun(), includePatterns, excludePatterns);
 					break;
 				case RESTORE:
-					handler.restore(!options.isDryRun(), includePatterns, excludePatterns);
+					handler.restore(options.isDryRun(), includePatterns, excludePatterns);
 					break;
 				case LIST:
 					handler.list(includePatterns, excludePatterns);
@@ -142,14 +142,7 @@ public class Cloudsync
 		}
 		finally
 		{
-			try
-			{
-				if (handler != null) handler.finalize();
-			}
-			catch (CloudsyncException e)
-			{
-				throw e;
-			}
+			if (handler != null) handler.finalize();
 		}
 	}
 

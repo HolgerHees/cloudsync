@@ -10,7 +10,7 @@ public class LogconsoleHandler extends ConsoleHandler
 {
 	private boolean					keepCurrentLine;
 	private int						sizeCurrentLine;
-	final static SimpleDateFormat	sdf	= new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+	final static private SimpleDateFormat	sdf	= new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
 
 	@Override
 	public void publish(LogRecord record)

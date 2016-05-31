@@ -15,7 +15,6 @@ import java.security.GeneralSecurityException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -69,18 +68,18 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 {
 	private final static Logger	LOGGER						= Logger.getLogger(RemoteGoogleDriveConnector.class.getName());
 
-	public final static String	SEPARATOR					= "/";
+	private final static String	SEPARATOR					= "/";
 
-	final static String			REDIRECT_URL				= "urn:ietf:wg:oauth:2.0:oob";
-	final static String			FOLDER						= "application/vnd.google-apps.folder";
-	final static String			FILE						= "application/octet-stream";
+	private final static String	REDIRECT_URL				= "urn:ietf:wg:oauth:2.0:oob";
+	private final static String	FOLDER						= "application/vnd.google-apps.folder";
+	private final static String	FILE						= "application/octet-stream";
 
-	final static int			MIN_SEARCH_BREAK			= 5000;
-	final static int			MIN_SEARCH_RETRIES			= 12;
-	final static int			CHUNK_COUNT					= 4;															// *
+	private final static int	MIN_SEARCH_BREAK			= 5000;
+	private final static int	MIN_SEARCH_RETRIES			= 12;
+	private final static int	CHUNK_COUNT					= 4;															// *
 	// 256kb
-	final static int			MAX_RESULTS					= 1000;
-	final static long			MIN_TOKEN_REFRESH_TIMEOUT	= 600;
+	private final static int	MAX_RESULTS					= 1000;
+	private final static long	MIN_TOKEN_REFRESH_TIMEOUT	= 600;
 
 	private GoogleTokenResponse	clientToken;
 	private GoogleCredential	credential;
@@ -118,8 +117,8 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		networkErrorBehavior = options.getNetworkErrorBehavior();
 		charset = options.getCharset();
 
-		cacheFiles = new HashMap<String, File>();
-		cacheParents = new HashMap<String, File>();
+		cacheFiles = new HashMap<>();
+		cacheParents = new HashMap<>();
 
 		this.basePath = Helper.trim(googleDriveOptions.getClientBasePath(), SEPARATOR);
 		this.backupName = backupName;
@@ -136,7 +135,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 					.setTransport(httpTransport)
 					.setJsonFactory(jsonFactory)
 					.setServiceAccountId(googleDriveOptions.getServiceAccountEmail())
-					.setServiceAccountScopes(Arrays.asList(DriveScopes.DRIVE))
+					.setServiceAccountScopes(Collections.singletonList(DriveScopes.DRIVE))
 					.setServiceAccountUser(googleDriveOptions.getServiceAccountUser())
 					.setServiceAccountPrivateKeyFromP12File(new java.io.File(googleDriveOptions.getServiceAccountPrivateKeyP12Path()))
 					.build();
@@ -147,7 +146,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		} else {
 			// Installed Applications auth - https://developers.google.com/api-client-library/java/google-api-java-client/oauth2#installed_applications
 			final GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, googleDriveOptions.getClientID(),
-					googleDriveOptions.getClientSecret(), Arrays.asList(DriveScopes.DRIVE)).setAccessType("offline").setApprovalPrompt("auto").build();
+					googleDriveOptions.getClientSecret(), Collections.singletonList(DriveScopes.DRIVE)).setAccessType("offline").setApprovalPrompt("auto").build();
 			
 			this.clientTokenPath = Paths.get(googleDriveOptions.getClientTokenPath());
 			
@@ -213,7 +212,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 				parentReference.setId(parentDriveItem.getId());
 				driveItem = new File();
 				driveItem.setTitle(title);
-				driveItem.setParents(Arrays.asList(parentReference));
+				driveItem.setParents(Collections.singletonList(parentReference));
 				final LocalStreamData data = _prepareDriveItem(driveItem, item, handler, true);
 				if (data == null)
 				{
@@ -284,7 +283,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 						final File copyOfdriveItem = new File();
 						final ParentReference _parentReference = new ParentReference();
 						_parentReference.setId(_parentDriveItem.getId());
-						copyOfdriveItem.setParents(Arrays.asList(_parentReference));
+						copyOfdriveItem.setParents(Collections.singletonList(_parentReference));
 						// copyOfdriveItem.setTitle(driveItem.getTitle());
 						// copyOfdriveItem.setMimeType(driveItem.getMimeType());
 						// copyOfdriveItem.setProperties(driveItem.getProperties());
@@ -349,7 +348,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 					final ParentReference parentReference = new ParentReference();
 					parentReference.setId(_parentDriveItem.getId());
 					File driveItem = new File();
-					driveItem.setParents(Arrays.asList(parentReference));
+					driveItem.setParents(Collections.singletonList(parentReference));
 					driveItem = service.files().patch(item.getRemoteIdentifier(), driveItem).execute();
 					if (driveItem == null)
 					{
@@ -412,7 +411,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 			{
 				refreshCredential();
 
-				final List<RemoteItem> child_items = new ArrayList<RemoteItem>();
+				final List<RemoteItem> child_items = new ArrayList<>();
 				final List<File> childDriveItems = _readFolder(parentItem.getRemoteIdentifier());
 				for (final File child : childDriveItems)
 				{
@@ -442,7 +441,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		{
 			refreshCredential();
 
-			final List<File> child_items = new ArrayList<File>();
+			final List<File> child_items = new ArrayList<>();
 			for (File file : _readFolder(parentDriveItem.getId()))
 			{
 				if (backupDriveFolder.getId().equals(file.getId()) || !file.getTitle().startsWith(backupDriveFolder.getTitle()))
@@ -483,7 +482,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private List<File> _readFolder(final String id) throws IOException
 	{
-		final List<File> child_items = new ArrayList<File>();
+		final List<File> child_items = new ArrayList<>();
 
 		final String q = "'" + id + "' in parents and trashed = false";
 		final Drive.Files.List request = service.files().list();
@@ -507,8 +506,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		return child_items;
 	}
 
-	private LocalStreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws CloudsyncException,
-			FileIOException
+	private LocalStreamData _prepareDriveItem(final File driveItem, final Item item, final Handler handler, final boolean with_filedata) throws FileIOException
 	{
 		LocalStreamData data = null;
 		if (with_filedata)
@@ -520,7 +518,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		final String metadata = handler.getLocalProcessedMetadata(item);
 
-		final List<Property> properties = new ArrayList<Property>();
+		final List<Property> properties = new ArrayList<>();
 
 		final int length = metadata.length();
 		int partCounter = 0;
@@ -552,7 +550,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	{
 		final List<Property> properties = driveItem.getProperties();
 
-		final Map<Integer, String> metadataMap = new HashMap<Integer, String>();
+		final Map<Integer, String> metadataMap = new HashMap<>();
 		int metadataPartCount = -1;
 
 		if (properties != null)
@@ -578,10 +576,10 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 		if (metadataPartCount == -1) metadataPartCount = metadataMap.size();
 
-		final List<String> parts = new ArrayList<String>();
+		final List<String> parts = new ArrayList<>();
 		for (int i = 0; i < metadataPartCount; i++)
 		{
-			parts.add(i, metadataMap.get(Integer.valueOf(i)));
+			parts.add(i, metadataMap.get(i));
 		}
 
 		try
@@ -683,7 +681,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 		}
 
 		final File driveRoot = _getBackupFolder();
-		final List<String> parentDriveTitles = new ArrayList<String>();
+		final List<String> parentDriveTitles = new ArrayList<>();
 		Item parentItem = item;
 		do
 		{
@@ -747,7 +745,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 								folder.setMimeType(FOLDER);
 								final ParentReference parentReference = new ParentReference();
 								parentReference.setId(parentItem.getId());
-								folder.setParents(Arrays.asList(parentReference));
+								folder.setParents(Collections.singletonList(parentReference));
 								_parentItem = service.files().insert(folder).execute();
 								if (_parentItem == null)
 								{
@@ -821,7 +819,7 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 	{
 		if( e instanceof GoogleJsonResponseException)
 		{
-			StringBuffer info = new StringBuffer("Unexpected error during ");
+			StringBuilder info = new StringBuilder("Unexpected error during ");
 			info.append(name);
 			if (item != null)
 			{
@@ -970,11 +968,11 @@ public class RemoteGoogleDriveConnector implements RemoteConnector
 
 	private class RemoteGoogleDriveProgress implements MediaHttpUploaderProgressListener
 	{
-		long								length;
-		private DecimalFormat				df;
+		private final long					length;
+		private final DecimalFormat			df;
 		private long						lastBytes;
 		private long						lastTime;
-		private RemoteGoogleDriveConnector	connector;
+		private final RemoteGoogleDriveConnector	connector;
 
 		public RemoteGoogleDriveProgress(RemoteGoogleDriveConnector connector, long length)
 		{

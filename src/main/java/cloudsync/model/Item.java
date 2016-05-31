@@ -36,15 +36,15 @@ public class Item
 	protected String			name;
 	protected String			remoteIdentifier;
 	protected ItemType			type;
-	protected Long				filesize;
-	protected Long				creationtime;
-	protected Long				modifytime;
-	protected Long				accesstime;
-	protected String[]			attributes;
+	private Long				filesize;
+	private Long				creationtime;
+	private Long				modifytime;
+	private Long				accesstime;
+	private String[]			attributes;
 
 	private String				checksum;
 
-	protected boolean			needsMetadataUpgrade;
+	private boolean				needsMetadataUpgrade;
 
 	protected Map<String, Item>	children;
 
@@ -58,7 +58,7 @@ public class Item
 		item.name = "";
 		item.remoteIdentifier = "";
 		item.type = ItemType.FOLDER;
-		item.children = new HashMap<String, Item>();
+		item.children = new HashMap<>();
 		return item;
 	}
 
@@ -97,7 +97,7 @@ public class Item
 			item.type = isFolder ? ItemType.FOLDER : ItemType.FILE;
 			if (item.type.equals(ItemType.FOLDER))
 			{
-				item.children = new HashMap<String, Item>();
+				item.children = new HashMap<>();
 			}
 		}
 
@@ -131,7 +131,7 @@ public class Item
 		item.attributes = convertToAttributes(map);
 		if (item.type.equals(ItemType.FOLDER))
 		{
-			item.children = new HashMap<String, Item>();
+			item.children = new HashMap<>();
 		}
 		return item;
 	}
@@ -144,13 +144,13 @@ public class Item
 			metadataVersion = Integer.parseInt(metadata[0]);
 		}
 
-		ItemType type = null;
-		Long filesize = null;
-		Long creationtime = null;
-		Long modifytime = null;
-		Long accesstime = null;
-		String checksum = null;
-		String[] attributes = null;
+		ItemType type;
+		Long filesize;
+		Long creationtime;
+		Long modifytime;
+		Long accesstime;
+		String checksum;
+		String[] attributes;
 
 		switch ( metadataVersion )
 		{
@@ -164,7 +164,7 @@ public class Item
 				final String group = StringUtils.isEmpty(metadata[5]) ? null : metadata[5];
 				final String user = StringUtils.isEmpty(metadata[6]) ? null : metadata[6];
 				final Integer permissions = StringUtils.isEmpty(metadata[7]) ? null : Integer.parseInt(metadata[7]);
-				Map<String, String[]> map = new HashMap<String, String[]>();
+				Map<String, String[]> map = new HashMap<>();
 				if (permissions == null) map.put(ATTRIBUTE_POSIX, new String[] { group, user });
 				else map.put(ATTRIBUTE_POSIX, new String[] { group, user, permissions.toString() });
 				attributes = convertToAttributes(map);
@@ -192,9 +192,9 @@ public class Item
 		item.modifytime = modifytime;
 		item.accesstime = accesstime;
 		item.attributes = attributes;
-		if (item.type.equals(ItemType.FOLDER))
+		if (ItemType.FOLDER.equals(item.type))
 		{
-			item.children = new HashMap<String, Item>();
+			item.children = new HashMap<>();
 		}
 		item.checksum = checksum;
 		item.needsMetadataUpgrade = metadataVersion != METADATA_VERSION;
@@ -211,7 +211,7 @@ public class Item
 
 	private static Map<String, String[]> convertToMap(String[] attributes)
 	{
-		Map<String, String[]> map = new HashMap<String, String[]>();
+		Map<String, String[]> map = new HashMap<>();
 		for (String row : attributes)
 		{
 			String[] values = StringUtils.splitPreserveAllTokens(row, ATTRIBUTE_SEPARATOR);
@@ -222,7 +222,7 @@ public class Item
 
 	private static String[] convertToAttributes(Map<String, String[]> map)
 	{
-		List<String> list = new ArrayList<String>();
+		List<String> list = new ArrayList<>();
 		for (String type : map.keySet())
 		{
 			list.add(type + ATTRIBUTE_SEPARATOR + StringUtils.join(map.get(type), ATTRIBUTE_SEPARATOR));
@@ -264,7 +264,7 @@ public class Item
 
 	public Map<String, Item> getChildren()
 	{
-		return new HashMap<String, Item>(children);
+		return new HashMap<>(children);
 	}
 
 	public String getTypeName()
@@ -284,7 +284,7 @@ public class Item
 
 	public boolean isFiledataChanged(final Item item)
 	{
-		if (type.equals(ItemType.FILE) || item.equals(ItemType.LINK))
+		if (type.equals(ItemType.FILE) || type.equals(ItemType.LINK))
 		{
 			if (isChanged(filesize, item.filesize))
 			{
@@ -410,24 +410,24 @@ public class Item
 	public FileTime getCreationTime()
 	{
 
-		return FileTime.from(creationtime.longValue(), TimeUnit.SECONDS);
+		return FileTime.from(creationtime, TimeUnit.SECONDS);
 	}
 
 	public FileTime getModifyTime()
 	{
 
-		return FileTime.from(modifytime.longValue(), TimeUnit.SECONDS);
+		return FileTime.from(modifytime, TimeUnit.SECONDS);
 	}
 
 	public FileTime getAccessTime()
 	{
 
-		return FileTime.from(accesstime.longValue(), TimeUnit.SECONDS);
+		return FileTime.from(accesstime, TimeUnit.SECONDS);
 	}
 
 	public String getInfo()
 	{
-		StringBuffer info = new StringBuffer();
+		StringBuilder info = new StringBuilder();
 		info.append( getTypeName() );
 		info.append( " '" );
 		info.append( getPath() );

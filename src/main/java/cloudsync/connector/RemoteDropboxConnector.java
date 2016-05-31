@@ -8,7 +8,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
@@ -47,19 +46,17 @@ import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.DbxWebAuthNoRedirect;
 import com.dropbox.core.DbxWriteMode;
 
-import javax.annotation.processing.FilerException;
-
 public class RemoteDropboxConnector implements RemoteConnector
 {
 	private final static Logger		LOGGER				= Logger.getLogger(RemoteDropboxConnector.class.getName());
 
-	public final static String		SEPARATOR			= "/";
-	public final static String		METADATA_SUFFIX		= ".md";
+	private final static String		SEPARATOR			= "/";
+	private final static String		METADATA_SUFFIX		= ".md";
 
-	final static int				MIN_SEARCH_BREAK	= 5000;
-	final static int				MIN_SEARCH_RETRIES	= 12;
-	final static int				MIN_RETRY_BREAK		= 10000;
-	final static int				RETRY_COUNT			= 6;														// =>
+	private final static int		MIN_SEARCH_BREAK	= 5000;
+	private final static int		MIN_SEARCH_RETRIES	= 12;
+	private final static int		MIN_RETRY_BREAK		= 10000;
+	private final static int		RETRY_COUNT			= 6;														// =>
 
 	private String					backupRootPath;
 	private String					backupHistoryPath;
@@ -260,15 +257,10 @@ public class RemoteDropboxConnector implements RemoteConnector
 		{
 			try
 			{
-				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-				try
+				try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream())
 				{
 					client.getFile(buildPath(item), null, outputStream);
 					return new ByteArrayInputStream(outputStream.toByteArray());
-				}
-				finally
-				{
-					outputStream.close();
 				}
 			}
 			catch (final DbxException e)
@@ -295,8 +287,8 @@ public class RemoteDropboxConnector implements RemoteConnector
 			{
 				// refreshCredential();
 
-				final List<RemoteItem> child_items = new ArrayList<RemoteItem>();
-				Map<String, DbxEntry[]> childContainer = new HashMap<String, DbxEntry[]>();
+				final List<RemoteItem> child_items = new ArrayList<>();
+				Map<String, DbxEntry[]> childContainer = new HashMap<>();
 				DbxEntry.WithChildren listing = client.getMetadataWithChildren(buildPath(parentItem));
 				for (DbxEntry child : listing.children)
 				{
@@ -331,7 +323,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 		initService(handler);
 		try
 		{
-			final List<DbxEntry> child_items = new ArrayList<DbxEntry>();
+			final List<DbxEntry> child_items = new ArrayList<>();
 			for (DbxEntry entry : client.getMetadataWithChildren(basePath).children)
 			{
 				if (!entry.name.startsWith(backupName) || entry.name.equals(backupName)) continue;
@@ -373,16 +365,11 @@ public class RemoteDropboxConnector implements RemoteConnector
 			{
 				try
 				{
-					ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-					try
+					try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream())
 					{
 						client.getFile(childData[1].path, null, outputStream);
 						encryptedMetadata = outputStream.toString("ASCII");
 						break;
-					}
-					finally
-					{
-						outputStream.close();
 					}
 				}
 				catch (final DbxException e)
@@ -408,8 +395,8 @@ public class RemoteDropboxConnector implements RemoteConnector
 		}
 		else
 		{
-			size = 0l;
-			time = 0l;
+			size = 0L;
+			time = 0L;
 		}
 
 		String title = handler.getProcessedText(childData[0].name);
@@ -472,7 +459,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 		return "ioexception: '" + msg + "' - ";
 	}
 
-	private void initService(Handler handler) throws CloudsyncException
+	private void initService(Handler handler)
 	{
 		if (isInitialized) return;
 
@@ -482,7 +469,7 @@ public class RemoteDropboxConnector implements RemoteConnector
 
 	private String buildPath(Item item)
 	{
-		List<String> names = new ArrayList<String>();
+		List<String> names = new ArrayList<>();
 
 		do
 		{
