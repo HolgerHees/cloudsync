@@ -5,27 +5,11 @@
     <output-test url="file://$MODULE_DIR$/target/test-classes" />
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/java" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: commons-cli:commons-cli:1.3.1" level="project" />
-    <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.10" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.commons:commons-csv:1.4" level="project" />
-    <orderEntry type="library" name="Maven: commons-io:commons-io:2.5" level="project" />
-    <orderEntry type="library" name="Maven: org.apache.commons:commons-lang3:3.4" level="project" />
-    <orderEntry type="library" name="Maven: org.bouncycastle:bcpg-jdk15on:1.54" level="project" />
-    <orderEntry type="library" name="Maven: org.bouncycastle:bcprov-jdk15on:1.54" level="project" />
-    <orderEntry type="library" name="Maven: com.google.apis:google-api-services-drive:v2-rev222-1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.api-client:google-api-client:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.oauth-client:google-oauth-client:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.http-client:google-http-client:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.http-client:google-http-client-jackson2:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.guava:guava-jdk5:17.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.api-client:google-api-client-gson:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.google.http-client:google-http-client-gson:1.22.0" level="project" />
-    <orderEntry type="library" name="Maven: com.dropbox.core:dropbox-core-sdk:1.8" level="project" />
-    <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-core:2.7.0-rc3" level="project" />
     <orderEntry type="library" name="Maven: commons-cli:commons-cli:1.3.1" level="project" />
     <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.10" level="project" />
     <orderEntry type="library" name="Maven: org.apache.commons:commons-csv:1.4" level="project" />
@@ -48,5 +32,7 @@
     <orderEntry type="library" name="Maven: com.google.code.gson:gson:2.1" level="project" />
     <orderEntry type="library" name="Maven: com.dropbox.core:dropbox-core-sdk:1.8" level="project" />
     <orderEntry type="library" name="Maven: com.fasterxml.jackson.core:jackson-core:2.7.0-rc3" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: junit:junit:4.10" level="project" />
+    <orderEntry type="library" scope="TEST" name="Maven: org.hamcrest:hamcrest-core:1.1" level="project" />
   </component>
 </module>
