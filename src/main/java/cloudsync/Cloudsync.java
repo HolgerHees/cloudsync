@@ -38,6 +38,12 @@ public class Cloudsync
 
 		final Logger logger = Logger.getLogger("cloudsync");
 		logger.setLevel(Level.ALL);
+
+		java.util.logging.Handler[] handlers = logger.getHandlers();
+		for(java.util.logging.Handler h : handlers) {
+			h.close();
+			logger.removeHandler(h);
+		}
 		final ConsoleHandler handler = new LogconsoleHandler();
 		handler.setLevel(Level.ALL);
 		logger.addHandler(handler);
