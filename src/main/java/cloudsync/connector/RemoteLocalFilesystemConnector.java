@@ -138,8 +138,10 @@ public class RemoteLocalFilesystemConnector implements RemoteConnector {
                     }
                 }
 
-                LocalStreamData data = handler.getLocalProcessedBinary(item);
-                java.nio.file.Files.copy(data.getStream(),remoteFile.toPath(),StandardCopyOption.REPLACE_EXISTING);
+                if (item.isType(ItemType.FILE)) {
+                    LocalStreamData data = handler.getLocalProcessedBinary(item);
+                    java.nio.file.Files.copy(data.getStream(), remoteFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
                 final String metadata = handler.getLocalProcessedMetadata(item);
                 java.nio.file.Files.write(remoteMetadataFile.toPath(), metadata.getBytes("UTF-8"),StandardOpenOption.TRUNCATE_EXISTING);                
                 

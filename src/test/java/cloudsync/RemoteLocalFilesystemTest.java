@@ -62,12 +62,14 @@ public class RemoteLocalFilesystemTest {
         File targetLocalRemoteFolder = Files.createTempDirectory("targetRemoteFolder").toFile();
         File restoreFolder = new File(rootFolder.getParent(),rootFolder.getName()+"_restore");
         File configFile = Files.createTempFile("test1Config", ".config").toFile();
-        
+
+        String targetLocalRemoteFolderPath = FilesystemHelper.fixPathSeparators(targetLocalRemoteFolder.getAbsolutePath());
+
         String config = "REMOTE_CONNECTOR=LocalFilesystem";
         config += "\n"+ "PASSPHRASE=1234567";
-        config += "\n"+ "TARGET_DIR=" + targetLocalRemoteFolder.getAbsolutePath();
-        config += "\n"+ "CACHEFILE="+targetLocalRemoteFolder.getAbsolutePath() + File.separator + ".cloudsync_{name}.cache";
-        config += "\n"+ "LOGFILE="+targetLocalRemoteFolder.getAbsolutePath() + File.separator + ".cloudsync_{name}.log";
+        config += "\n"+ "TARGET_DIR=" + targetLocalRemoteFolderPath;
+        config += "\n"+ "CACHEFILE=" + targetLocalRemoteFolderPath + File.separator + ".cloudsync.cache";
+        config += "\n"+ "LOGFILE=" + targetLocalRemoteFolderPath + File.separator + ".cloudsync.log";
         Files.write(configFile.toPath(), config.getBytes(), StandardOpenOption.CREATE);
                 
         System.out.println("RootFolder: " + rootFolder.getAbsolutePath());
@@ -119,12 +121,14 @@ public class RemoteLocalFilesystemTest {
         System.out.println("Test2");
         System.out.println("RootFolder: " + rootFolder.getAbsolutePath());
         System.out.println("TargetFolder: " + targetLocalRemoteFolder.getAbsolutePath());
-        
+
+        String targetLocalRemoteFolderPath = FilesystemHelper.fixPathSeparators(targetLocalRemoteFolder.getAbsolutePath());
+
         String config = "REMOTE_CONNECTOR=LocalFilesystem";
         config += "\n"+ "PASSPHRASE=1234567";
-        config += "\n"+ "TARGET_DIR=" + targetLocalRemoteFolder.getAbsolutePath();
-        config += "\n"+ "CACHEFILE="+targetLocalRemoteFolder.getAbsolutePath() + File.separator + ".cloudsync_{name}.cache";
-        config += "\n"+ "LOGFILE="+targetLocalRemoteFolder.getAbsolutePath() + File.separator + ".cloudsync_{name}.log";
+        config += "\n"+ "TARGET_DIR=" + targetLocalRemoteFolderPath;
+        config += "\n"+ "CACHEFILE=" + targetLocalRemoteFolderPath + File.separator + ".cloudsync.cache";
+        config += "\n"+ "LOGFILE=" + targetLocalRemoteFolderPath + File.separator + ".cloudsync.log";
         config += "\n"+ "HISTORY=3";
         Files.write(configFile.toPath(), config.getBytes(), StandardOpenOption.CREATE);
            
