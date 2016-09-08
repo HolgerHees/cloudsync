@@ -136,9 +136,6 @@ public class RemoteLocalFilesystemConnector implements RemoteConnector {
                     if (remoteBackupHistoryFolder != null) {
                         _moveToHistory(item);
                     }
-                }
-
-                if (item.isType(ItemType.FILE)) {
                     LocalStreamData data = handler.getLocalProcessedBinary(item);
                     java.nio.file.Files.copy(data.getStream(), remoteFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 }
