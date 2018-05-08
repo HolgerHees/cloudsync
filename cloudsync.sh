@@ -19,7 +19,7 @@ else
     fi
     
     export LC_ALL=$LANG
-
+    
     CMD="$JAVA -cp \"./lib/*\" cloudsync.Cloudsync $*"
     eval $CMD
 fi
