@@ -4,7 +4,7 @@ public enum FollowLinkType
 {
 	EXTERNAL("external"), NONE("none"), ALL("all");
 
-	private String	name;
+	private final String	name;
 
 	FollowLinkType(final String name)
 	{

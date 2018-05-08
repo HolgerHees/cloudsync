@@ -17,8 +17,9 @@ Encrypted data includes:
 
 Filechanges are detected by comparing the file metadata. It uses a local cachefile to speedup the incremental update. The local cachefile is completly restoreable by analysing the serverside archived metadata.
 
-Supported Cloud Services are:
+Supported Services are:
 - Google Drive (stable)
+- Remote mounted filesystem (beta)
 - Dropbox (alpha preview)
 
 To provide additional cloud targets like Amazon Cloud Drive or Microsoft OneDrive just implement 6 functions from the interface [Connector.java](https://github.com/HolgerHees/cloudsync/tree/master/src/main/java/cloudsync/connector/RemoteConnector.java).

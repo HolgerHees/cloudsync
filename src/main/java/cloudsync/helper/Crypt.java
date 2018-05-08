@@ -57,17 +57,17 @@ public class Crypt
 
 	private final static Logger	LOGGER				= Logger.getLogger(Crypt.class.getName());
 
-	private static final int	BUFFER_SIZE			= 1 << 16;
+	private final static int	BUFFER_SIZE			= 1 << 16;
 
-	private static int			ENCRYPT_ALGORITHM	= PGPEncryptedDataGenerator.AES_256;
-	private static boolean		ENCRYPT_ARMOR		= false;
+	private final static int	 ENCRYPT_ALGORITHM	= PGPEncryptedDataGenerator.AES_256;
+	private final static boolean ENCRYPT_ARMOR		= false;
 
 	private final String		passphrase;
-	private boolean				showProgress;
-	private long				minTmpFileSize;
-	private boolean useJCE = true;
+	private final boolean				showProgress;
+	private final long				minTmpFileSize;
+	private final boolean 			useJCE;
 
-	public Crypt(final CmdOptions options) throws CloudsyncException
+	public Crypt(final CmdOptions options)
 	{
 		passphrase = options.getPassphrase();
 		showProgress = options.showProgress();
@@ -86,6 +86,10 @@ public class Crypt
 		{
 			useJCE = false;
 			LOGGER.warning("Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files are not installed");
+		}
+		else
+		{
+			useJCE = true;
 		}
 
 		Security.addProvider(new BouncyCastleProvider());
@@ -108,7 +112,7 @@ public class Crypt
 
 	public InputStream decryptData(final InputStream stream) throws CloudsyncException
 	{
-		InputStream in = null;
+		InputStream in;
 
 		try
 		{
@@ -243,7 +247,7 @@ public class Crypt
 			final OutputStream literalOut = literalDataGenerator.open(compressedOut, PGPLiteralData.BINARY, name, new Date(), new byte[BUFFER_SIZE]);
 
 			byte[] buffer = new byte[BUFFER_SIZE];
-			int len = 0;
+			int len;
 
 			if (showProgress && output instanceof FileOutputStream && fileOutputInfo != null )
 			{
@@ -255,7 +259,7 @@ public class Crypt
 					literalOut.write(buffer, 0, len);
 					current += len;
 					String msg = "\r  " + df.format(Math.ceil(current * 100 / length)) + "% (" + convertToKB(current) + " of " + convertToKB(length)
-							+ " kb) encrypted of " + fileOutputInfo;;
+							+ " kb) encrypted of " + fileOutputInfo;
 					LOGGER.log(Level.FINEST, msg, true);
 				}
 			}

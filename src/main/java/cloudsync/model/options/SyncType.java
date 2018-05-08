@@ -4,8 +4,8 @@ public enum SyncType
 {
 	BACKUP("backup", true), RESTORE("restore", false), LIST("list", false), CLEAN("clean", true);
 
-	private String	name;
-	private boolean	checkpid;
+	private final String	name;
+	private final boolean	checkpid;
 
 	SyncType(final String name, final boolean checkpid)
 	{

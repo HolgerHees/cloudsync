@@ -4,7 +4,7 @@ public enum FileErrorType
 {
 	EXCEPTION("exception"), MESSAGE("message");
 
-	private String name;
+	private final String name;
 
 	FileErrorType(final String name)
 	{

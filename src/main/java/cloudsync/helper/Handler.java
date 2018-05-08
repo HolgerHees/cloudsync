@@ -10,7 +10,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -69,7 +68,7 @@ public class Handler
 
 	private boolean							isLocked	= false;
 
-	private FileErrorType fileErrorBehavior;
+	private final FileErrorType fileErrorBehavior;
 
 	class Status
 	{
@@ -93,7 +92,7 @@ public class Handler
 		this.fileErrorBehavior = fileErrorBehavior;
 
 		root = Item.getDummyRoot();
-		duplicates = new ArrayList<Item>();
+		duplicates = new ArrayList<>();
 	}
 
 	public void init(SyncType synctype, String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException
@@ -116,7 +115,7 @@ public class Handler
 
 			try
 			{
-				Files.write(pidFilePath, new Long(pid).toString().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				Files.write(pidFilePath, Long.toString(pid).getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 				pidCleanup = true;
 			}
 			catch (IOException e)
@@ -225,7 +224,7 @@ public class Handler
 
 	private void readCSVStructure(final Path cacheFilePath) throws CloudsyncException
 	{
-		final Map<String, Item> mapping = new HashMap<String, Item>();
+		final Map<String, Item> mapping = new HashMap<>();
 		mapping.put("", root);
 
 		try
@@ -254,7 +253,7 @@ public class Handler
 
 	private void readRemoteStructure(final Item parentItem) throws CloudsyncException
 	{
-		Map<ItemType, Integer> status = new HashMap<ItemType, Integer>();
+		Map<ItemType, Integer> status = new HashMap<>();
 		readRemoteStructure(parentItem, status);
 		if (status.size() > 0) LOGGER.log(Level.INFO, formatRemoteStatus(status));
 	}
@@ -310,14 +309,14 @@ public class Handler
 	private void putRemoteStatus(Map<ItemType, Integer> status, ItemType type)
 	{
 		Integer count = status.get(type);
-		if (count == null) count = new Integer(0);
+		if (count == null) count = 0;
 		count++;
 		status.put(type, count);
 	}
 
 	private String formatRemoteStatus(Map<ItemType, Integer> status)
 	{
-		List<String> typeStatus = new ArrayList<String>();
+		List<String> typeStatus = new ArrayList<>();
 		for (ItemType type : ItemType.values())
 		{
 			Integer count = status.get(type);
@@ -340,7 +339,7 @@ public class Handler
 		if (duplicates.size() > 0)
 		{
 			String message = "found " + duplicates.size() + " duplicate item" + (duplicates.size() == 1 ? "" : "s") + ":\n\n";
-			final List<Item> list = new ArrayList<Item>();
+			final List<Item> list = new ArrayList<>();
 			for (final Item item : duplicates)
 			{
 				list.addAll(_flatRecursiveChildren(item));
@@ -389,7 +388,7 @@ public class Handler
 	{
 		if (duplicates.size() > 0)
 		{
-			final List<Item> list = new ArrayList<Item>();
+			final List<Item> list = new ArrayList<>();
 			for (final Item item : duplicates)
 			{
 				list.addAll(_flatRecursiveChildren(item));
@@ -420,7 +419,7 @@ public class Handler
 		list(includePatterns, excludePatterns, root);
 	}
 
-	private void list(String[] includePatterns, String[] excludePatterns, final Item item) throws CloudsyncException
+	private void list(String[] includePatterns, String[] excludePatterns, final Item item)
 	{
 		for (final Item child : item.getChildren().values())
 		{
@@ -437,14 +436,14 @@ public class Handler
 		}
 	}
 
-	public void restore(final boolean perform, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
+	public void restore(final boolean dryRun, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
 	{
 		checkDuplications();
 
-		restore(perform, includePatterns, excludePatterns, root);
+		restore(dryRun, includePatterns, excludePatterns, root);
 	}
 
-	private void restore(final boolean perform, String[] includePatterns, String[] excludePatterns, final Item item) throws CloudsyncException
+	private void restore(final boolean dryRun, String[] includePatterns, String[] excludePatterns, final Item item) throws CloudsyncException
 	{
 		for (final Item child : item.getChildren().values())
 		{
@@ -454,26 +453,23 @@ public class Handler
 			{
 				localConnection.prepareUpload(this, child, existingFlag);
 				LOGGER.log(Level.FINE, "restore " + child.getTypeName() + " '" + path + "'");
-				if (perform)
-				{
-					localConnection.upload(this, child, existingFlag, permissionType);
-				}
+				if (!dryRun) localConnection.upload(this, child, existingFlag, permissionType);
 			}
 
 			if (child.isType(ItemType.FOLDER))
 			{
-				restore(perform, includePatterns, excludePatterns, child);
+				restore(dryRun, includePatterns, excludePatterns, child);
 			}
 		}
 	}
 
-	public void backup(final boolean perform, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
+	public void backup(final boolean dryRun, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
 	{
 		checkDuplications();
 
 		final Status status = new Status();
 
-		backup(perform, includePatterns, excludePatterns, root, status);
+		backup(dryRun, includePatterns, excludePatterns, root, status);
 
 		boolean isChanged = isLocked;
 
@@ -485,14 +481,14 @@ public class Handler
 		}
 
 		final int total = status.create + status.update + status.skip;
-		LOGGER.log(Level.INFO, "total items: " + (new Integer(total).toString()));
-		LOGGER.log(Level.INFO, "created items: " + (new Integer(status.create).toString()));
-		LOGGER.log(Level.INFO, "updated items: " + (new Integer(status.update).toString()));
-		LOGGER.log(Level.INFO, "removed items: " + (new Integer(status.remove).toString()));
-		LOGGER.log(Level.INFO, "skipped items: " + (new Integer(status.skip).toString()));
+		LOGGER.log(Level.INFO, "total items: " + (Integer.toString(total)));
+		LOGGER.log(Level.INFO, "created items: " + (Integer.toString(status.create)));
+		LOGGER.log(Level.INFO, "updated items: " + (Integer.toString(status.update)));
+		LOGGER.log(Level.INFO, "removed items: " + (Integer.toString(status.remove)));
+		LOGGER.log(Level.INFO, "skipped items: " + (Integer.toString(status.skip)));
 	}
 
-	private void backup(final boolean perform, String[] includePatterns, String[] excludePatterns, final Item remoteParentItem, final Status status)
+	private void backup(final boolean dryRun, String[] includePatterns, String[] excludePatterns, final Item remoteParentItem, final Status status)
 			throws CloudsyncException
 	{
 		final Map<String, Item> unusedRemoteChildItems = remoteParentItem.getChildren();
@@ -517,7 +513,7 @@ public class Handler
 				{
 					remoteChildItem = localChildItem;
 					LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
-					if (perform)
+					if (!dryRun)
 					{
 						createLock();
 						remoteConnection.upload(this, remoteChildItem);
@@ -530,7 +526,7 @@ public class Handler
 					if (remoteChildItem.isTypeChanged(localChildItem))
 					{
 						LOGGER.log(Level.FINE, "remove " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
-						if (perform)
+						if (!dryRun)
 						{
 							createLock();
 							remoteConnection.remove(this, remoteChildItem);
@@ -539,7 +535,7 @@ public class Handler
 
 						remoteChildItem = localChildItem;
 						LOGGER.log(Level.FINE, "create " + remoteChildItem.getTypeName() + " '" + backupPath + "'");
-						if (perform)
+						if (!dryRun)
 						{
 							createLock();
 							remoteConnection.upload(this, remoteChildItem);
@@ -552,12 +548,12 @@ public class Handler
 					{
 						final boolean isFiledataChanged = localChildItem.isFiledataChanged(remoteChildItem);
 						remoteChildItem.update(localChildItem);
-						List<String> types = new ArrayList<String>();
+						List<String> types = new ArrayList<>();
 						if (isFiledataChanged) types.add("data,attributes");
 						else if (!isFiledataChanged) types.add("attributes");
 						if (remoteChildItem.isMetadataFormatChanged()) types.add("format");
 						LOGGER.log(Level.FINE, "update " + remoteChildItem.getTypeName() + " '" + backupPath + "' [" + StringUtils.join(types, ",") + "]");
-						if (perform)
+						if (!dryRun)
 						{
 							createLock();
 							remoteConnection.update(this, remoteChildItem, isFiledataChanged);
@@ -579,7 +575,7 @@ public class Handler
 						LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + backupPath + "' was changed during update.");
 					}
 				}
-				catch (NoSuchFileException e)
+				catch (FileIOException e)
 				{
 					LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + backupPath + "' was removed during update.");
 				}
@@ -588,7 +584,7 @@ public class Handler
 
 				if (remoteChildItem.isType(ItemType.FOLDER))
 				{
-					backup(perform, includePatterns, excludePatterns, remoteChildItem, status);
+					backup(dryRun, includePatterns, excludePatterns, remoteChildItem, status);
 				}
 			}
 			catch (FileIOException e)
@@ -606,17 +602,13 @@ public class Handler
 					throw new CloudsyncException("Skip '" + backupPath + "'", e);
 				}
 			}
-			catch (NoSuchFileException e)
-			{
-				LOGGER.log(Level.WARNING, "skip '" + backupPath + "'. does not exists anymore.");
-			}
 		}
 
 		for (final Item item : unusedRemoteChildItems.values())
 		{
 			LOGGER.log(Level.FINE, "remove " + item.getTypeName() + " '" + item.getPath() + "'");
 			remoteParentItem.removeChild(item);
-			if (perform)
+			if (!dryRun)
 			{
 				createLock();
 				remoteConnection.remove(this, item);
@@ -628,7 +620,7 @@ public class Handler
 	private List<Item> _flatRecursiveChildren(final Item parentItem)
 	{
 
-		final List<Item> list = new ArrayList<Item>();
+		final List<Item> list = new ArrayList<>();
 		list.add(parentItem);
 
 		if (parentItem.isType(ItemType.FOLDER))
@@ -668,12 +660,11 @@ public class Handler
 	}
 
 	public RemoteItem initRemoteItem(String remoteIdentifier, boolean isFolder, String title, String metadata, Long remoteFilesize, FileTime remoteCreationtime)
-			throws CloudsyncException
 	{
 		return Item.fromMetadata(remoteIdentifier, isFolder, title, metadata, remoteFilesize, remoteCreationtime);
 	}
 
-	public RemoteStreamData getRemoteProcessedBinary(Item item) throws IOException, CloudsyncException
+	public RemoteStreamData getRemoteProcessedBinary(Item item) throws CloudsyncException
 	{
 		InputStream stream = remoteConnection.get(this, item);
 		

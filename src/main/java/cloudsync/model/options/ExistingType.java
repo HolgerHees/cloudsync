@@ -4,7 +4,7 @@ public enum ExistingType
 {
 	STOP("stop"), UPDATE("update"), SKIP("skip"), RENAME("rename");
 
-	private String	name;
+	private final String name;
 
 	ExistingType(final String name)
 	{

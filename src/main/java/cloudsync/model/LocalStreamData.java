@@ -4,8 +4,8 @@ import java.io.InputStream;
 
 public class LocalStreamData
 {
-	private InputStream	data;
-	private long		length;
+	private final InputStream	data;
+	private final long			length;
 
 	public LocalStreamData(InputStream data, long length)
 	{

@@ -4,7 +4,7 @@ public enum PermissionType
 {
 	SET("set"), IGNORE("ignore"), TRY("try");
 
-	private String	name;
+	private final String	name;
 
 	PermissionType(final String name)
 	{
