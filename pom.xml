@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cloudsync</groupId>
 	<artifactId>cloudsync</artifactId>
-	<version>v1.0-beta14</version>
+	<version>v1.0-beta15</version>
 	<name>cloudsync</name>
 	<url>https://github.com/HolgerHees/cloudsync</url>
 	<dependencies>

@@ -86,20 +86,31 @@ public class RemoteLocalFilesystemConnector implements RemoteConnector {
         int retryCount = 0;
         do {
             try {
+                LocalStreamData data = null;
+
+                // prepare
                 if(ItemType.FOLDER.equals(item.getType())) {
                     remoteFile.mkdirs();
                 }
                 else {
-                    LocalStreamData data = handler.getLocalProcessedBinary(item);
-                    java.nio.file.Files.copy(data.getStream(),remoteFile.toPath());
+                    data = handler.getLocalProcessedBinary(item);
                 }
 
                 final String metadata = handler.getLocalProcessedMetadata(item);
+
+                // upload metadata
                 java.nio.file.Files.write(remoteMetadataFile.toPath(), metadata.getBytes("UTF-8"),StandardOpenOption.CREATE_NEW);
+
+                // upload file data
+                if( data != null ) {
+                    java.nio.file.Files.copy(data.getStream(),remoteFile.toPath());
+                }
                 
+                // verifiy
                 if (!remoteFile.exists()) {
                     throw new CloudsyncException("Couldn't create item '" + item.getPath() + "'");
                 }
+
                 if(!remoteMetadataFile.exists()) {
                     throw new CloudsyncException("Couldn't create metadata for item '" + item.getPath() + "'");
                 }
@@ -306,10 +317,9 @@ public class RemoteLocalFilesystemConnector implements RemoteConnector {
 
     private RemoteItem _prepareBackupItem(final File remoteFile, final Handler handler) throws CloudsyncException {
         try {
-            String metadata = null;
             File remoteMetadataFile = new File(remoteFile.getParent(),remoteFile.getName() + ".metadata");
-            String encryptedMetadata = new String(Files.readAllBytes(remoteMetadataFile.toPath()),"UTF-8");
-            metadata = handler.getProcessedText(encryptedMetadata);
+            String encryptedMetadata = remoteMetadataFile.exists() ? new String(Files.readAllBytes(remoteMetadataFile.toPath()),"UTF-8") : "";
+            String metadata = encryptedMetadata.isEmpty() ? "" : handler.getProcessedText(encryptedMetadata);
             String title = handler.getProcessedText(remoteFile.getName());
             return handler.initRemoteItem(remoteFile.getName(), remoteFile.isDirectory(), title, metadata, remoteFile.length(),FileTime.fromMillis(remoteFile.lastModified()));
         } catch (Exception e) {

@@ -463,11 +463,11 @@ public class LocalFilesystemConnector
 		}
 	}
 
-	public File[] readFolder(final Item item)
+	public File[] readFolder(final Item item) 
+	
+	throws CloudsyncException
 	{
 		final String currentPath = localPath + (StringUtils.isEmpty(item.getPath()) ? "" : Item.SEPARATOR + item.getPath());
-
-		// System.out.println(currentPath);
 
 		final File folder = new File(currentPath);
 
@@ -477,17 +477,24 @@ public class LocalFilesystemConnector
 			return new File[] {};
 		}
 
-		return folder.listFiles();
+		File[] files = folder.listFiles();
+		
+		if( files == null )
+		{
+            throw new CloudsyncException("Path '" + currentPath + "' is not readable. Check your permissions");
+		}
+		
+		return files;
 	}
 
-	public Item getItem(File file, final FollowLinkType followlinks) throws FileIOException
+	public Item getItem(File file, final FollowLinkType followlinks, List<String> followedLinkPaths ) throws FileIOException
 	{
 		try
 		{
 			Path path = file.toPath();
 
 			ItemType type;
-
+			
 			if (Files.isSymbolicLink(path))
 			{
 				String target;
@@ -503,13 +510,29 @@ public class LocalFilesystemConnector
 				}
 				target = Paths.get(target).toFile().getCanonicalPath();
 
-				if (!followlinks.equals(FollowLinkType.NONE) && followlinks.equals(FollowLinkType.EXTERNAL) && !target.startsWith(localPath))
+                if (!followlinks.equals(FollowLinkType.NONE) && followlinks.equals(FollowLinkType.EXTERNAL) && !target.startsWith(localPath + Item.SEPARATOR) )
 				{
-					final Path targetPath = Paths.get(target);
-					if (Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS))
-					{
-						path = targetPath;
-					}
+                    boolean foundLink = false;
+                    for( String followedLinkPath: followedLinkPaths )
+                    {
+                        // 1. if the link target is a child of a already followed link, then there is no need to follow again
+                        // 2. and the target should not be equal with a already followed link. Otherwise we are requesting the same item again. So we have to follow.
+                        if( target.startsWith(followedLinkPath) && !target.equals(followedLinkPath) )
+                        {
+                            foundLink = true;
+                            break;
+                        }
+                    }
+                    
+                    if( !foundLink )
+                    {
+                        final Path targetPath = Paths.get(target);
+                        if (Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS))
+                        {
+                            path = targetPath;
+                            followedLinkPaths.add(target);
+                        }
+                    }
 				}
 			}
 
@@ -610,7 +633,6 @@ public class LocalFilesystemConnector
 			}
 
 			return Item.fromLocalData(file.getName(), type, filesize, creationTime, modifyTime, accessTime, attributes);
-
 		}
 		catch (final IOException e)
 		{

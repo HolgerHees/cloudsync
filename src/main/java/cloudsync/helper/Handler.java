@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
+import java.lang.StringBuilder;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -57,7 +58,10 @@ public class Handler
 
 	private final Item						root;
 	private final List<Item>				duplicates;
-	private final ExistingType existingFlag;
+	private final List<Item>				invalides;
+    private final List<String>			    followedLinkPaths;
+
+private final ExistingType existingFlag;
 	private final FollowLinkType followlinks;
 	private final PermissionType permissionType;
 
@@ -93,6 +97,8 @@ public class Handler
 
 		root = Item.getDummyRoot();
 		duplicates = new ArrayList<>();
+		invalides = new ArrayList<>();
+		followedLinkPaths = new ArrayList<>();
 	}
 
 	public void init(SyncType synctype, String cacheFile, String lockFile, String pidFile, boolean nocache, boolean forcestart) throws CloudsyncException
@@ -180,7 +186,7 @@ public class Handler
 
 	private void releaseLock() throws CloudsyncException
 	{
-		if (!isLocked || duplicates.size() > 0) return;
+		if (!isLocked || duplicates.size() > 0 || invalides.size() > 0 ) return;
 
 		try
 		{
@@ -264,45 +270,55 @@ public class Handler
 
 		for (final RemoteItem childItem : childItems)
 		{
-			childItem.setParent(parentItem);
+            if( childItem.getChecksum() == null )
+            {
+                LOGGER.log(Level.WARNING, "found invalides: '" + childItem.getPath());
+                if (childItem.getRemoteFilesize() != null) LOGGER.log(Level.WARNING, "  size: " + childItem.getRemoteFilesize() );
+                LOGGER.log(Level.WARNING, "  created: " + childItem.getRemoteCreationTime());
+                invalides.add(childItem);
+            }
+            else
+            {
+                childItem.setParent(parentItem);
 
-			final RemoteItem existingChildItem = (RemoteItem) parentItem.getChildByName(childItem.getName());
-			if (existingChildItem != null)
-			{
-				LOGGER.log(Level.WARNING, "found duplicate: '" + childItem.getPath());
-				String msg = "";
-				if (childItem.getRemoteFilesize() != null) msg += " " + childItem.getRemoteFilesize();
-				if (existingChildItem.getRemoteFilesize() != null) msg += " [" + existingChildItem.getRemoteFilesize() + "]";
-				if (!StringUtils.isEmpty(msg)) LOGGER.log(Level.WARNING, "  size: " + msg);
-				LOGGER.log(Level.WARNING, "  created: " + childItem.getRemoteCreationTime() + " [" + existingChildItem.getRemoteCreationTime() + "]");
+                final RemoteItem existingChildItem = (RemoteItem) parentItem.getChildByName(childItem.getName());
+                if (existingChildItem != null)
+                {
+                    LOGGER.log(Level.WARNING, "found duplicate: '" + childItem.getPath());
+                    String msg = "";
+                    if (childItem.getRemoteFilesize() != null) msg += " " + childItem.getRemoteFilesize();
+                    if (existingChildItem.getRemoteFilesize() != null) msg += " [" + existingChildItem.getRemoteFilesize() + "]";
+                    if (!StringUtils.isEmpty(msg)) LOGGER.log(Level.WARNING, "  size: " + msg);
+                    LOGGER.log(Level.WARNING, "  created: " + childItem.getRemoteCreationTime() + " [" + existingChildItem.getRemoteCreationTime() + "]");
 
-				// if childItem is newer
-				if (existingChildItem.getRemoteCreationTime().compareTo( childItem.getRemoteCreationTime() ) < 0 )
-				{
-					parentItem.addChild(childItem);
-					duplicates.add(existingChildItem);
-				}
-				else
-				{
-					duplicates.add(childItem);
-				}
+                    // if childItem is newer
+                    if (existingChildItem.getRemoteCreationTime().compareTo( childItem.getRemoteCreationTime() ) < 0 )
+                    {
+                        parentItem.addChild(childItem);
+                        duplicates.add(existingChildItem);
+                    }
+                    else
+                    {
+                        duplicates.add(childItem);
+                    }
 
-				putRemoteStatus(status, ItemType.DUPLICATE);
+                    putRemoteStatus(status, ItemType.DUPLICATE);
 
-			}
-			else
-			{
-				parentItem.addChild(childItem);
-			}
+                }
+                else
+                {
+                    parentItem.addChild(childItem);
+                }
 
-			if (status.size() > 0) LOGGER.log(Level.INFO, "\r  " + formatRemoteStatus(status), true);
+                if (status.size() > 0) LOGGER.log(Level.INFO, "\r  " + formatRemoteStatus(status), true);
 
-			putRemoteStatus(status, childItem.getType());
+                putRemoteStatus(status, childItem.getType());
 
-			if (childItem.isType(ItemType.FOLDER))
-			{
-				readRemoteStructure(childItem, status);
-			}
+                if (childItem.isType(ItemType.FOLDER))
+                {
+                    readRemoteStructure(childItem, status);
+                }
+            }
 		}
 	}
 
@@ -334,11 +350,13 @@ public class Handler
 		return "found " + message;
 	}
 
-	private void checkDuplications() throws CloudsyncException
+	private void checkErrors() throws CloudsyncException
 	{
+        StringBuilder message = new StringBuilder();
+        
 		if (duplicates.size() > 0)
 		{
-			String message = "found " + duplicates.size() + " duplicate item" + (duplicates.size() == 1 ? "" : "s") + ":\n\n";
+			message.append("found " + duplicates.size() + " duplicate item" + (duplicates.size() == 1 ? "" : "s") + ":\n\n");
 			final List<Item> list = new ArrayList<>();
 			for (final Item item : duplicates)
 			{
@@ -346,12 +364,34 @@ public class Handler
 			}
 			for (final Item item : list)
 			{
-				message += "  " + item.getRemoteIdentifier() + " - " + item.getPath() + "\n";
+				message.append("  " + item.getRemoteIdentifier() + " - " + item.getPath() + "\n");
 			}
-			message += "\n  try to run with '--clean=<path>'";
-
-			throw new CloudsyncException(message);
 		}
+
+		if (invalides.size() > 0)
+		{
+            if( message.length() > 0 )
+            {
+                message.append("\n\n");
+            }
+			message.append("found " + invalides.size() + " invalid item" + (invalides.size() == 1 ? "" : "s") + ":\n\n");
+			final List<Item> list = new ArrayList<>();
+			for (final Item item : invalides)
+			{
+				list.addAll(_flatRecursiveChildren(item));
+			}
+			for (final Item item : list)
+			{
+				message.append("  " + item.getRemoteIdentifier() + " - " + item.getPath() + "\n");
+			}
+		}
+
+		if( message.length() > 0 )
+		{
+            message.append("\n  try to run with '--clean=<path>'");
+
+            throw new CloudsyncException(message.toString());
+        }
 	}
 
 	private boolean checkPattern(String path, String[] includePatterns, String[] excludePatterns)
@@ -388,33 +428,45 @@ public class Handler
 	{
 		if (duplicates.size() > 0)
 		{
-			final List<Item> list = new ArrayList<>();
-			for (final Item item : duplicates)
-			{
-				list.addAll(_flatRecursiveChildren(item));
-			}
-			for (final Item item : list)
-			{
-				localConnection.prepareUpload(this, item, ExistingType.RENAME);
-				LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
-				localConnection.prepareParent(this, item);
-				localConnection.upload(this, item, ExistingType.RENAME, permissionType);
-			}
-
-			Collections.reverse(list);
-			for (final Item item : list)
-			{
-				LOGGER.log(Level.FINE, "clean " + item.getTypeName() + " '" + item.getPath() + "'");
-				remoteConnection.remove(this, item);
-			}
+            _clean(duplicates);
 			duplicates.clear();
-			releaseLock();
 		}
+
+		if (invalides.size() > 0)
+		{
+            _clean(invalides);
+			invalides.clear();
+		}
+
+		releaseLock();
+	}
+	
+	private void _clean( List<Item> toClean ) throws CloudsyncException
+	{
+        final List<Item> list = new ArrayList<>();
+        for (final Item item : toClean)
+        {
+            list.addAll(_flatRecursiveChildren(item));
+        }
+        for (final Item item : list)
+        {
+            localConnection.prepareUpload(this, item, ExistingType.RENAME);
+            LOGGER.log(Level.FINE, "restore " + item.getTypeName() + " '" + item.getPath() + "'");
+            localConnection.prepareParent(this, item);
+            localConnection.upload(this, item, ExistingType.RENAME, permissionType);
+        }
+
+        Collections.reverse(list);
+        for (final Item item : list)
+        {
+            LOGGER.log(Level.FINE, "clean " + item.getTypeName() + " '" + item.getPath() + "'");
+            remoteConnection.remove(this, item);
+        }
 	}
 
 	public void list(String[] includePatterns, String[] excludePatterns) throws CloudsyncException
 	{
-		checkDuplications();
+		checkErrors();
 
 		list(includePatterns, excludePatterns, root);
 	}
@@ -438,7 +490,7 @@ public class Handler
 
 	public void restore(final boolean dryRun, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
 	{
-		checkDuplications();
+		checkErrors();
 
 		restore(dryRun, includePatterns, excludePatterns, root);
 	}
@@ -465,7 +517,7 @@ public class Handler
 
 	public void backup(final boolean dryRun, String[] includePatterns, String[] excludePatterns) throws CloudsyncException
 	{
-		checkDuplications();
+		checkErrors();
 
 		final Status status = new Status();
 
@@ -502,7 +554,7 @@ public class Handler
 			Item remoteChildItem = null;
 			try
 			{
-				Item localChildItem = localConnection.getItem(localChildFile, followlinks);
+				Item localChildItem = localConnection.getItem( localChildFile, followlinks, followedLinkPaths );
 				localChildItem.setParent(remoteParentItem);
 
 				backupPath = localChildItem.getPath();
@@ -569,7 +621,7 @@ public class Handler
 				try
 				{
 					// refresh Metadata
-					Item _localChildItem = localConnection.getItem(localChildFile, followlinks);
+					Item _localChildItem = localConnection.getItem(localChildFile, followlinks, followedLinkPaths );
 					if (_localChildItem.isMetadataChanged(localChildItem))
 					{
 						LOGGER.log(Level.WARNING, localChildItem.getTypeName() + " '" + backupPath + "' was changed during update.");
