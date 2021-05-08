@@ -1,5 +1,7 @@
 # cloudsync
 
+**This project is obsolete and inactive. I recommend to use [rclone](https://rclone.org/) as a much more powerful alternative. If you are interested to takeover the ownership. Feel free to contact me.**
+
 Sync a local filesystem on linux, windows and osx incremental and encrypted with google drive simliar to rsync. You can also restore the encrypted data back to a local filesystem. It works as a complete backup solution for your private data.
 
 Other compareable backup solutions like [duplicity](http://duplicity.nongnu.org) upload one big encrypted 'base' archive with additional delta archive files. After a few months you must upload a new fresh 'base' archive to avoid hundreds of delta files. This approach, while widely used in various backup solutions, is problematic for private async DSL connections. To solve these issues each file is encrypted and uploaded separately.
