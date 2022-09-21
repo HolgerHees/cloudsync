@@ -510,7 +510,7 @@ public class LocalFilesystemConnector
 				}
 				target = Paths.get(target).toFile().getCanonicalPath();
 
-                if (!followlinks.equals(FollowLinkType.NONE) && followlinks.equals(FollowLinkType.EXTERNAL) && !target.startsWith(localPath + Item.SEPARATOR) )
+                if (!followlinks.equals(FollowLinkType.NONE) && followlinks.equals(FollowLinkType.EXTERNAL) && !Paths.get(target).toFile().getCanonicalFile().toPath().startsWith(localPath + Item.SEPARATOR) )
 				{
                     boolean foundLink = false;
                     for( String followedLinkPath: followedLinkPaths )
